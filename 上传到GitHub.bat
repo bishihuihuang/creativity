@@ -64,7 +64,7 @@ if defined PAGES_URL (
     node 工具脚本/build.js --deploy !PAGES_URL!
     if errorlevel 1 (
         echo.
-        echo [x] 构建自检没通过，先别上传。按上面的 ? 修好再跑一次本脚本。
+        echo [x] 构建自检没通过，先别上传。按上面的报错修好再跑一次本脚本。
         pause & exit /b 1
     )
 ) else (
