@@ -8,7 +8,7 @@ rem  编辑器里若显示乱码，请「以 ANSI 打开」，不要「转存为 UTF-8」。
 rem
 rem  用法（在「创意」目录下）：
 rem      双击打开                       —— 只做本地初始化 + 提交，不推送
-rem      上传到GitHub.bat https://github.com/你的用户名/creativity.git
+rem      上传到GitHub.bat https://github.com/bishihuihuang/creativity.git
 rem                                     —— 完整上传并推送
 rem
 rem  脚本做四件事：
@@ -22,6 +22,7 @@ rem  首次运行若还没配过 git 用户名/邮箱，本脚本会自动写入「本仓库本地配置」，
 rem  只影响这个仓库，不改动你的全局 git 设置。
 rem ==========================================================================
 chcp 936 >nul
+cd /d "%~dp0"
 setlocal EnableExtensions EnableDelayedExpansion
 
 set "REPO=%~1"
@@ -83,7 +84,7 @@ if errorlevel 1 (
 echo.
 if not defined REPO (
     echo [4/4] 已跳过 push —— 重新运行并带上仓库地址即可推送：
-    echo       上传到GitHub.bat  https://github.com/你的用户名/creativity.git
+    echo       上传到GitHub.bat  https://github.com/bishihuihuang/creativity.git
     pause & exit /b 0
 )
 
@@ -109,7 +110,7 @@ echo  [v] 推送完成。1～2 分钟后访问：
 if defined PAGES_URL (
     echo       !PAGES_URL!/
 ) else (
-    echo       https://你的用户名.github.io/仓库名/
+    echo       https://bishihuihuang.github.io/creativity/
 )
 echo.
 echo  如果打不开，去仓库 Settings - Pages：
