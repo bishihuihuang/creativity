@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://your-name.github.io/creativity/sitemap.xml
+Sitemap: https://bishihuihuang.github.io/creativity/sitemap.xml
