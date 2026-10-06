@@ -7,9 +7,8 @@ rem  cmd.exe 读 UTF-8 批处理时会错位断行，中文行会被当成命令执行而报错。
 rem  编辑器里若显示乱码，请「以 ANSI 打开」，不要「转存为 UTF-8」。
 rem
 rem  用法（在「创意」目录下）：
-rem      双击打开                       —— 只做本地初始化 + 提交，不推送
-rem      上传到GitHub.bat https://github.com/bishihuihuang/creativity.git
-rem                                     —— 完整上传并推送
+rem      双击打开                       —— 自动使用默认仓库地址，完整上传并推送
+rem      上传到GitHub.bat 网址          —— 使用你指定的仓库地址
 rem
 rem  脚本做四件事：
 rem      1. 初始化本地仓库（已初始化过也没关系）
@@ -25,7 +24,11 @@ chcp 936 >nul
 cd /d "%~dp0"
 setlocal EnableExtensions EnableDelayedExpansion
 
+rem --- 这里是改动点：如果没有传参数，就使用默认地址 ---
 set "REPO=%~1"
+if not defined REPO (
+    set "REPO=https://github.com/bishihuihuang/creativity.git"
+)
 set "PAGES_URL="
 
 where git >nul 2>nul
@@ -82,12 +85,6 @@ if errorlevel 1 (
 )
 
 echo.
-if not defined REPO (
-    echo [4/4] 已跳过 push —— 重新运行并带上仓库地址即可推送：
-    echo       上传到GitHub.bat  https://github.com/bishihuihuang/creativity.git
-    pause & exit /b 0
-)
-
 echo [4/4] 推送到 %REPO%
 git remote get-url origin >nul 2>nul
 if errorlevel 1 (
