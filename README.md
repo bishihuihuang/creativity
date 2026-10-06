@@ -14,7 +14,7 @@
 
 1. 打开 <https://github.com/new>
 2. Repository name 填 `creativity`（或你喜欢的名字，**这个值决定你的访问网址**）
-3. 选 **Public** → 勾选 **Add a README file** → Create repository
+3. 选 **Public** → **不勾选**任何自动生成文件（README / .gitignore / LICENSE 本地已有同名文件）→ Create repository
 
 ### 第 2 步：上传本站文件
 
@@ -34,7 +34,7 @@
 git init
 git add -A
 git commit -m "init: 创意引擎 Muse"
-git remote add origin https://github.com/你的用户名/creativity.git
+git remote add origin https://github.com/bishihuihuang/creativity.git
 git branch -M main
 git push -u origin main
 ```
@@ -42,7 +42,7 @@ git push -u origin main
 **方式 C · 双击脚本（方式 B 的封装，已内置在 `上传到GitHub.bat`）**
 
 ```bash
-上传到GitHub.bat  https://github.com/你的用户名/creativity.git
+上传到GitHub.bat  https://github.com/bishihuihuang/creativity.git
 ```
 
 不带参数只执行 add + commit 不推送，方便你先看提交内容；脚本只增不删，不会 reset、不会 force push。如果你的 git 还没配过用户名/邮箱，脚本会写一份**本仓库本地**占位配置（不碰全局设置），按提示换成你自己的即可。
@@ -57,13 +57,13 @@ git push -u origin main
 2. **Build and deployment → Source** 选 **Deploy from a branch**
 3. **Branch** 选 `main`，**Folder** 选 `/ (root)` → Save
 4. 等 1～2 分钟，GitHub 会给你网址：
-   - 仓库项目 → `https://你的用户名.github.io/creativity/`
+   - 仓库项目 → `https://bishihuihuang.github.io/creativity/`
    - 自定义域名 → `https://www.你的域名/`
 
 > 想换成自己的域名或换个仓库名？不用手工全局替换。站点地址出现在 14 个页面的 `<link rel="canonical">`、`index.html` 的 `og:url`、`robots.txt`、`sitemap.xml` 四处，一条命令统一改写：
 >
 > ```bash
-> node 工具脚本/build.js --deploy https://你的用户名.github.io/仓库名
+> node 工具脚本/build.js --deploy https://bishihuihuang.github.io/creativity
 > ```
 >
 > 方式 C 的 `上传到GitHub.bat` 会从这个仓库地址**自动推导**出站点地址并带上它，所以直接跑脚本就不用管这一步。改完后随时用 `node 工具脚本/build.js --check` 核对四处地址是否一致。
@@ -107,7 +107,7 @@ npx http-server -p 8000
 ```bash
 node 工具脚本/build.js --check                   # 只检查，不写文件
 node 工具脚本/build.js                           # 重新生成 sitemap.xml 与 service-worker.js
-node 工具脚本/build.js --deploy https://用户.github.io/仓库名   # 同上，并统一改写站点地址
+node 工具脚本/build.js --deploy https://bishihuihuang.github.io/creativity   # 同上，并统一改写站点地址
 node 工具脚本/check_tokens.js                    # 设计令牌完整性审计（10 套主题 × 全部引用令牌）
 ```
 
