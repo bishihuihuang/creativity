@@ -1,0 +1,485 @@
+/* ============================================================
+ * 创意引擎全站公共样式 common.css
+ * 内容：10 主题变量体系 + V2 设计 Token 别名层 + 共享 UI 套件
+ * 页面一律引用 --zl-* 别名，自动跟随主题，无需重复造样式
+ * ============================================================ */
+
+/* ---------- 全局重置 ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--txt);
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+             env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+}
+
+/* 触摸设备：禁用 hover 残留 */
+@media (hover: none) {
+    .cy-btn:hover, .tool-box:hover, .card:hover, .box:hover, button:hover, a:hover {
+        transform: none !important;
+        box-shadow: inherit !important;
+    }
+    .tooltip, [class*="tooltip"], [class*="tip"] { display: none !important; }
+}
+
+/* 游戏/工具按钮触摸目标放大 */
+button, .cy-btn, [class*="btn"] { min-width: 44px; min-height: 44px; }
+
+/* ============ V1.4 多主题变量体系（默认深色流光 + 10 主题） ============ */
+:root {
+    --bg: #0a0e1f;
+    --bg-dim: linear-gradient(rgba(2,6,16,.18),rgba(2,6,16,.32));
+    --card: rgba(245,247,255,.96);
+    --card-2: #ffffff;
+    --txt: #333333;
+    --dim: #8b93a7;
+    --line: #e8e8e8;
+    --gold: #6366f1;
+    --gold-2: #22d3ee;
+    --blue: #6366f1;
+    --green: #11998e;
+    --red: #ef4444;
+    --glow: #6366f1;
+    --glow-2: #a855f7;
+    --glow-3: #22d3ee;
+    --radius: 16px;
+    --shadow: 0 25px 70px rgba(0, 0, 0, .35);
+    --btn-txt: #ffffff;
+    --title-grad: linear-gradient(135deg, #6366f1, #a855f7, #22d3ee, #6366f1);
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, #6366f1, #a855f7);
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(99,102,241,.22), rgba(168,85,247,.12), transparent 72%);
+    --bg-pattern: linear-gradient(rgba(99,102,241,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.05) 1px,transparent 1px),radial-gradient(circle at 20% 14%,rgba(99,102,241,.16),transparent 46%),radial-gradient(circle at 82% 20%,rgba(168,85,247,.12),transparent 42%),radial-gradient(circle at 58% 78%,rgba(34,211,238,.08),transparent 52%);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(99,102,241,.28), rgba(34,211,238,.10), transparent 70%);
+}
+:root[data-theme="blue"] {
+    --bg: #0b0e1a; --bg-dim: linear-gradient(rgba(2,6,16,.18),rgba(2,6,16,.32));
+    --card: rgba(20,26,46,.82); --card-2: #161d38;
+    --txt: #e8ecf5; --dim: #8b93a7;
+    --line: #2a3557;
+    --gold: #7aa8ff; --gold-2: #4a7dff;
+    --blue: #4da3ff; --green: #3ddc97; --red: #ff6b6b;
+    --glow: #7aa8ff; --glow-2: #a8c9ff; --glow-3: #4a7dff;
+    --radius: 14px;
+    --shadow: 0 8px 28px rgba(2,6,18,.55);
+    --btn-txt: #0b0e1a;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(122,168,255,.18), rgba(180,140,255,.10), transparent 72%);
+    --bg-pattern: linear-gradient(rgba(122,168,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(122,168,255,.05) 1px,transparent 1px),radial-gradient(circle at 20% 14%,rgba(122,168,255,.16),transparent 46%),radial-gradient(circle at 82% 20%,rgba(180,140,255,.12),transparent 42%),radial-gradient(circle at 58% 78%,rgba(77,163,255,.08),transparent 52%);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(122,168,255,.26), rgba(180,140,255,.10), transparent 70%);
+}
+:root[data-theme="gold"] {
+    --bg: #0d0a05; --bg-dim: linear-gradient(rgba(0,0,0,.06),rgba(0,0,0,.14));
+    --card: rgba(28,23,14,.88); --card-2: #251e11;
+    --txt: #f0e9d8; --dim: #9a8f74;
+    --line: #3d331d;
+    --gold: #f5c542; --gold-2: #e6a817;
+    --blue: #6fb7ff; --green: #4cdb8b; --red: #ff7b7b;
+    --glow: #f5c542; --glow-2: #fff3c4; --glow-3: #e6a817;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.6);
+    --btn-txt: #3a2a00;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 65% 42% at 50% -6%, rgba(245,197,66,.14), rgba(255,160,40,.06), transparent 72%);
+    --bg-pattern: repeating-linear-gradient(45deg,rgba(245,197,66,.03) 0 1px,transparent 1px 16px),radial-gradient(circle at 50% -10%,rgba(245,197,66,.16),transparent 55%),radial-gradient(circle at 85% 32%,rgba(230,168,23,.08),transparent 46%);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(245,197,66,.22), rgba(230,168,23,.08), transparent 70%);
+}
+:root[data-theme="light"] {
+    --bg: #f4f6fb; --bg-dim: none;
+    --card: rgba(255,255,255,.85); --card-2: #eef2f9;
+    --txt: #1e2733; --dim: #64748b;
+    --line: #e2e8f0;
+    --gold: #6366f1; --gold-2: #22d3ee;
+    --blue: #4f46e5; --green: #0d9488; --red: #dc2626;
+    --glow: #6366f1; --glow-2: #a5b4fc; --glow-3: #22d3ee;
+    --radius: 14px;
+    --shadow: 0 6px 20px rgba(15,23,42,.10);
+    --btn-txt: #ffffff;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(165,180,252,.35), rgba(196,181,253,.18), transparent 72%);
+    --bg-pattern: radial-gradient(circle at 50% -4%,rgba(165,180,252,.30),transparent 55%),radial-gradient(circle at 18% 82%,rgba(196,181,253,.16),transparent 46%),radial-gradient(rgba(99,102,241,.09) 1px,transparent 1px);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(165,180,252,.30), rgba(34,211,238,.10), transparent 70%);
+}
+:root[data-theme="milk"] {
+    --bg: #f5edd9; --bg-dim: linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.12));
+    --card: rgba(255,252,243,.92); --card-2: #efe6d0;
+    --txt: #4a3e2a; --dim: #8a7c5e;
+    --line: #e0d4b8;
+    --gold: #c9a227; --gold-2: #a8871f;
+    --blue: #6b8fd6; --green: #6aa84f; --red: #d96c5e;
+    --glow: #c9a227; --glow-2: #f0e0ae; --glow-3: #a8871f;
+    --radius: 14px;
+    --shadow: 0 8px 26px rgba(120,95,40,.16);
+    --btn-txt: #4a3e2a;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(214,175,80,.16), rgba(255,240,200,.10), transparent 72%);
+    --bg-pattern: repeating-linear-gradient(0deg,rgba(201,162,39,.05) 0 1px,transparent 1px 32px),radial-gradient(circle at 50% -8%,rgba(214,175,80,.18),transparent 55%),radial-gradient(circle at 16% 86%,rgba(255,240,200,.16),transparent 44%);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(214,175,80,.20), rgba(255,240,200,.08), transparent 70%);
+}
+:root[data-theme="guofeng"] {
+    --bg: #160b08; --bg-dim: linear-gradient(rgba(10,4,2,.18),rgba(10,4,2,.30));
+    --card: rgba(42,20,14,.86); --card-2: #2a1a12;
+    --txt: #f5ead9; --dim: #b3976f;
+    --line: #5a3520;
+    --gold: #e0b13c; --gold-2: #c98f1b;
+    --blue: #7fb4ff; --green: #5cdb8b; --red: #ff7b6b;
+    --glow: #e0b13c; --glow-2: #ffe9b8; --glow-3: #c98f1b;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.6);
+    --btn-txt: #3a2600;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(224,60,40,.20), rgba(224,177,60,.10), transparent 72%);
+    --bg-pattern: repeating-linear-gradient(45deg,rgba(224,60,40,.05) 0 1px,transparent 1px 18px);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(224,177,60,.18), rgba(224,60,40,.08), transparent 70%);
+}
+:root[data-theme="snowsun"] {
+    --bg: #0a0f1c; --bg-dim: linear-gradient(rgba(4,8,16,.20),rgba(4,8,16,.34));
+    --card: rgba(12,18,32,.40); --card-2: rgba(18,26,44,.48);
+    --txt: #eef3fb; --dim: #9db0cb;
+    --line: rgba(210,225,255,.26);
+    --gold: #ffb45c; --gold-2: #f08a30;
+    --blue: #6fb7ff; --green: #4cdb8b; --red: #ff8a8a;
+    --glow: #ffb45c; --glow-2: #ffe3b0; --glow-3: #f08a30;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.55);
+    --btn-txt: #3a1c00;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(255,170,70,.20), rgba(120,160,255,.08), transparent 72%);
+    --bg-pattern: repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 1px,transparent 1px 22px);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,170,70,.20), rgba(120,160,255,.08), transparent 70%);
+}
+:root[data-theme="cyber"] {
+    --bg: #070714; --bg-dim: linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.34));
+    --card: rgba(16,12,36,.55); --card-2: #101a3a;
+    --txt: #e8f6ff; --dim: #8a92b8;
+    --line: rgba(0,217,255,.35);
+    --gold: #00d9ff; --gold-2: #0090cc;
+    --blue: #00d9ff; --green: #0090cc; --red: #ff8a8a;
+    --glow: #00d9ff; --glow-2: #b8f4ff; --glow-3: #0090cc;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.55);
+    --btn-txt: #001820;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(255,255,255,.10), transparent 72%);
+    --bg-pattern: repeating-linear-gradient(45deg,rgba(0,217,255,.05) 0 1px,transparent 1px 20px);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(0,217,255,.20), rgba(0,144,204,.08), transparent 70%);
+}
+:root[data-theme="aurora"] {
+    --bg: #071018; --bg-dim: linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.34));
+    --card: rgba(12,26,30,.5); --card-2: #10242e;
+    --txt: #eafbf2; --dim: #82a898;
+    --line: rgba(125,255,176,.35);
+    --gold: #7dffb0; --gold-2: #3dd98a;
+    --blue: #7dffb0; --green: #3dd98a; --red: #ff8a8a;
+    --glow: #7dffb0; --glow-2: #c0f8e0; --glow-3: #3dd98a;
+    --radius: 14px;
+    --shadow: 0 8px 30px rgba(0,0,0,.55);
+    --btn-txt: #00281a;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(255,255,255,.10), transparent 72%);
+    --bg-pattern: repeating-linear-gradient(45deg,rgba(125,255,176,.05) 0 1px,transparent 1px 20px);
+    --bg-image: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(125,255,176,.18), rgba(61,217,138,.08), transparent 70%);
+}
+:root[data-theme="custom"] {
+    --bg: #0b0e1a; --bg-dim: linear-gradient(rgba(2,6,16,.18));
+    --card: rgba(20,26,46,.82); --card-2: #161d38;
+    --txt: #e8ecf5; --dim: #8b93a7;
+    --line: #2a3557;
+    --gold: #7aa8ff; --gold-2: #4a7dff;
+    --blue: #4da3ff; --green: #3ddc97; --red: #ff6b6b;
+    --glow: #7aa8ff; --glow-2: #a8c9ff; --glow-3: #4a7dff;
+    --radius: 14px;
+    --shadow: 0 8px 28px rgba(2,6,18,.55);
+    --btn-txt: #0b0e1a;
+    --title-grad: linear-gradient(135deg, var(--glow), var(--gold), var(--gold-2));
+    --flow-grad: linear-gradient(125deg, #0a0e1f, #131735, #23205c, #3b1d78, #1d1b4b, #0f122f, #241a54);
+    --scroll-thumb: linear-gradient(180deg, var(--gold), var(--gold-2));
+    --bg-glow: radial-gradient(ellipse 70% 45% at 50% -6%, rgba(122,168,255,.18), rgba(180,140,255,.10), transparent 72%);
+    --bg-pattern: linear-gradient(rgba(122,168,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(122,168,255,.05) 1px,transparent 1px),radial-gradient(circle at 20% 14%,rgba(122,168,255,.16),transparent 46%),radial-gradient(circle at 82% 20%,rgba(180,140,255,.12),transparent 42%),radial-gradient(circle at 58% 78%,rgba(77,163,255,.08),transparent 52%);
+    --bg-image: var(--custom-bg, radial-gradient(ellipse 90% 60% at 50% -10%, rgba(122,168,255,.22), rgba(77,163,255,.08), transparent 70%));
+}
+
+/* ============ 非深色流光主题：背景 = 光晕 + 纹理（背景图已内联为渐变，无需外部图片） ============ */
+:root[data-theme]:not([data-theme="dark"]) .bg-flow-1 {
+    background-image: var(--bg-image), var(--bg-dim, transparent), var(--bg-glow), var(--bg-pattern);
+    background-size: cover, cover, auto, auto;
+    background-position: center, center, center, center;
+    background-attachment: fixed, fixed, local, local;
+    animation: none;
+}
+:root[data-theme] { --card-2: var(--card); }
+
+/* ============ 欣赏模式（左下角 👁 按钮：隐藏界面，纯欣赏背景） ============ */
+body.cy-admire main, body.cy-admire header, body.cy-admire footer,
+body.cy-admire .container, body.cy-admire .cy-shell, body.cy-admire #cyThemeBtn,
+body.cy-admire .cy-theme-panel, body.cy-admire .back-area,
+body.cy-admire .title-area, body.cy-admire .tool-card,
+body.cy-admire .card, body.cy-admire .cy-page, body.cy-admire .orb { display: none !important; }
+body.cy-admire { overflow: hidden !important; }
+
+/* ============ 主题面板 ============ */
+.cy-custom-up {
+    display: inline-block; margin-left: 6px; padding: 1px 5px;
+    border-radius: 8px; background: rgba(127,127,127,.25);
+    font-size: 12px; line-height: 1.5; cursor: pointer; user-select: none;
+}
+.cy-custom-up:hover { background: rgba(127,127,127,.45); }
+
+.cy-theme-panel {
+    position: fixed;
+    bottom: 74px;
+    right: 16px;
+    z-index: 2147483645;
+    width: 272px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 12px;
+    display: none;
+    color: var(--txt);
+    scrollbar-width: thin;
+}
+.cy-theme-panel.open { display: block; }
+.cy-theme-panel::-webkit-scrollbar { width: 6px; }
+.cy-theme-panel::-webkit-scrollbar-thumb { background: var(--gold-2); border-radius: 3px; }
+.cy-theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cy-theme-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 4px; border: 1px solid var(--line); border-radius: 10px;
+    cursor: pointer; background: var(--card-2); color: var(--txt); font-size: 11px;
+    transition: transform .2s, box-shadow .2s;
+}
+.cy-theme-item:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.cy-theme-item.active { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.cy-theme-dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.cy-theme-title { font-weight: 700; margin-bottom: 8px; font-size: 13px; }
+
+/* ============ V2 对比度兜底层 ============ */
+[style*="color:#333"], [style*="color: #333"],
+[style*="color:#444"], [style*="color: #444"],
+[style*="color:#555"], [style*="color: #555"],
+[style*="color:#666"], [style*="color: #666"],
+[style*="color:#777"], [style*="color: #777"],
+[style*="color:#888"], [style*="color: #888"],
+[style*="color:#999"], [style*="color: #999"],
+[style*="color:#aaa"], [style*="color: #aaa"],
+[style*="color:#bbb"], [style*="color: #bbb"],
+[style*="color:#ccc"], [style*="color: #ccc"] { color: var(--dim) !important; }
+input::placeholder, textarea::placeholder { color: var(--dim) !important; }
+.hint, .tip, .tips, .note, .desc, .sub, .sub-text, .info, .muted, .gray, .small-text,
+.empty-tip { color: var(--dim); }
+.back-home, .back-btn, .back-link, a[class*="back-"] { color: var(--dim) !important; -webkit-text-fill-color: var(--dim) !important; }
+.mode-tab { color: var(--txt) !important; -webkit-text-fill-color: var(--txt) !important; }
+.mode-tab.active { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+
+/* ============ V2 设计 Token 别名层（页面只引用 --zl-*，永远跟随主题） ============ */
+:root[data-theme] {
+    --zl-bg: var(--bg);
+    --zl-bg-dim: var(--bg-dim);
+    --zl-card: var(--card);
+    --zl-card-2: var(--card-2);
+    --zl-text: var(--txt);
+    --zl-muted: var(--dim);
+    --zl-dim: var(--dim);
+    --zl-border: var(--line);
+    --zl-accent: var(--gold);
+    --zl-accent-2: var(--gold-2);
+    --zl-accent-soft: color-mix(in srgb, var(--gold) 14%, transparent);
+    --zl-accent-grad: var(--title-grad);
+    --zl-ok: var(--green);
+    --zl-danger: var(--red);
+    --zl-link: var(--blue);
+    --zl-glow: var(--glow);
+    --zl-radius: var(--radius);
+    --zl-shadow: var(--shadow);
+    --zl-btn-text: var(--btn-txt);
+}
+
+/* ============ Toast ============ */
+.cy-toast {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2147483647;
+    background: var(--zl-card);
+    color: var(--zl-text);
+    padding: 10px 22px;
+    border-radius: 24px;
+    font-size: 14px;
+    box-shadow: var(--zl-shadow);
+    border: 1px solid var(--zl-border);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .3s;
+    max-width: 86%;
+    text-align: center;
+}
+.cy-toast.show { opacity: 1; }
+
+/* ============ 共享 UI 套件（页面统一使用，保证全站一致性） ============ */
+.cy-shell {
+    position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;
+    text-align: center; padding: 14px 20px;
+    background: linear-gradient(180deg, rgba(8,10,30,.9), rgba(10,14,39,.5), transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    box-shadow: 0 4px 40px rgba(0,0,0,.3);
+}
+.cy-shell h1 {
+    font-size: 24px; font-weight: 900; letter-spacing: 4px; margin: 0;
+    background: linear-gradient(90deg, var(--glow), var(--glow-2), var(--glow-3), var(--glow));
+    background-size: 200% 100%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; animation: cyTextShine 3s linear infinite; display: inline-block;
+}
+@keyframes cyTextShine {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+.cy-page {
+    position: relative; z-index: 10;
+    max-width: 940px; margin: 86px auto 60px; padding: 0 16px;
+}
+.cy-card {
+    background: var(--zl-card);
+    border: 1px solid var(--zl-border);
+    border-radius: var(--zl-radius);
+    box-shadow: var(--zl-shadow);
+    padding: 20px;
+    margin-bottom: 18px;
+}
+.cy-card h2 {
+    font-size: 19px; font-weight: 800; margin: 0 0 4px;
+    color: var(--zl-text);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.cy-card .sub { font-size: 13px; margin-bottom: 14px; }
+
+.cy-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+.cy-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 18px; border: none; border-radius: 12px; cursor: pointer;
+    font-size: 14px; font-weight: 700; letter-spacing: 1px; color: var(--zl-btn-text);
+    background: var(--zl-accent-grad); box-shadow: 0 6px 18px rgba(0,0,0,.16);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, opacity .2s;
+    user-select: none; -webkit-user-select: none;
+}
+.cy-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.24); }
+.cy-btn:active { transform: translateY(0) scale(.96); }
+.cy-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.cy-btn-ghost {
+    background: var(--zl-card-2); color: var(--zl-text);
+    border: 1px solid var(--zl-border); box-shadow: none;
+}
+.cy-btn-ghost:hover { border-color: var(--zl-accent); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
+.cy-btn-sm { padding: 7px 12px; font-size: 13px; border-radius: 10px; min-height: 36px; }
+.cy-btn-ok { background: linear-gradient(135deg, var(--green), var(--green)); color: var(--btn-txt); }
+.cy-btn-danger { background: linear-gradient(135deg, var(--red), var(--red)); color: #fff; }
+
+.cy-input, .cy-select, .cy-textarea {
+    background: var(--zl-card-2); color: var(--zl-text);
+    border: 1px solid var(--zl-border); border-radius: 12px;
+    padding: 10px 14px; font-size: 14px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+}
+.cy-input:focus, .cy-select:focus, .cy-textarea:focus {
+    border-color: var(--zl-accent); box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+}
+.cy-input { min-width: 200px; }
+.cy-textarea { width: 100%; resize: vertical; min-height: 90px; line-height: 1.7; }
+
+.cy-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border-radius: 999px; font-size: 12px;
+    background: var(--zl-card-2); border: 1px solid var(--zl-border); color: var(--zl-text);
+    cursor: pointer; user-select: none; transition: all .2s;
+}
+.cy-chip:hover { border-color: var(--zl-accent); }
+.cy-chip.on { background: var(--zl-accent); color: var(--zl-btn-text); border-color: var(--zl-accent); }
+.cy-chip.lock { border-style: dashed; border-color: var(--zl-accent); background: var(--zl-accent); color: var(--zl-btn-text); }
+
+.cy-tab-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.cy-tab {
+    padding: 8px 16px; border-radius: 999px; font-size: 13px; cursor: pointer;
+    background: var(--zl-card-2); border: 1px solid var(--zl-border); color: var(--zl-text);
+    transition: all .2s; user-select: none;
+}
+.cy-tab:hover { border-color: var(--zl-accent); }
+.cy-tab.active { background: var(--zl-accent-grad); color: var(--zl-btn-text); border-color: transparent; }
+
+.cy-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.cy-stat {
+    background: var(--zl-card-2); border: 1px solid var(--zl-border); border-radius: 14px;
+    padding: 12px; text-align: center;
+}
+.cy-stat b { display: block; font-size: 22px; font-weight: 900; color: var(--zl-accent); }
+.cy-stat span { font-size: 12px; color: var(--zl-muted); }
+
+.cy-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.cy-item {
+    background: var(--zl-card-2); border: 1px solid var(--zl-border); border-radius: 12px;
+    padding: 12px 14px; font-size: 14px; line-height: 1.7; position: relative;
+    display: flex; gap: 10px; align-items: flex-start;
+}
+.cy-item .txt { flex: 1; word-break: break-word; }
+.cy-item .ops { display: flex; gap: 4px; flex-shrink: 0; }
+.cy-icon-btn {
+    border: none; background: transparent; cursor: pointer; font-size: 16px;
+    padding: 4px 6px; border-radius: 8px; color: var(--zl-muted); line-height: 1;
+    transition: background .2s, transform .15s;
+}
+.cy-icon-btn:hover { background: var(--zl-card); transform: scale(1.1); }
+.cy-icon-btn.fav { color: #f5c542; }
+
+.cy-empty { text-align: center; padding: 30px 10px; color: var(--zl-muted); font-size: 14px; }
+.cy-progress {
+    height: 8px; border-radius: 999px; background: var(--zl-card-2);
+    border: 1px solid var(--zl-border); overflow: hidden;
+}
+.cy-progress > i {
+    display: block; height: 100%; border-radius: 999px;
+    background: var(--zl-accent-grad); transition: width .4s ease;
+}
+
+/* 全局滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.04); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 12px; border: 2px solid rgba(255,255,255,.4); }
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    .cy-shell { padding: 12px 14px; }
+    .cy-shell h1 { font-size: 19px; letter-spacing: 2px; }
+    .cy-page { margin: 74px auto 50px; padding: 0 10px; }
+    .cy-card { padding: 14px; border-radius: 14px; }
+    .cy-card h2 { font-size: 17px; }
+    .cy-toolbar { gap: 8px; }
+    .cy-input { min-width: 0; width: 100%; }
+    .cy-btn { padding: 9px 14px; font-size: 13px; }
+}

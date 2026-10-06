@@ -1,0 +1,431 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生成艺术·创意画布｜创意引擎</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="favicon-48.png">
+    <link rel="canonical" href="https://your-name.github.io/creativity/6.html">
+    <style>
+        canvas.art { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--zl-border); background: var(--zl-card-2); display: block; }
+        .art-wrap { position: relative; margin-top: 12px; }
+        .art-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
+        .preset-item { border: 1px solid var(--zl-border); border-radius: 10px; padding: 10px 12px; cursor: pointer; text-align: center; background: var(--zl-card-2); transition: all .15s; }
+        .preset-item:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.15); }
+        .preset-item.active { border-color: var(--zl-accent); background: var(--zl-accent-soft, rgba(99,102,241,.12)); }
+        .preset-item .em { font-size: 22px; }
+        .preset-item .nm { font-size: 13px; font-weight: 700; color: var(--zl-text); margin-top: 4px; }
+        .preset-item .ds { font-size: 11px; color: var(--zl-dim); margin-top: 2px; line-height: 1.5; }
+        .hint { font-size: 12px; color: var(--zl-dim); margin-top: 8px; line-height: 1.8; }
+    </style>
+
+    <link rel="stylesheet" href="common.css">
+    <script>
+        try {
+            var _ct = localStorage.getItem('cy_theme');
+            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
+            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
+        } catch (e) {}
+    </script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="创意引擎">
+    <meta name="description" content="六种程序化生成算法：流场、分形树、粒子、波纹、螺旋、利萨如曲线，每次生成独一无二的作品，可导出 PNG。">
+    <link rel="stylesheet" href="common.css">
+    <script defer src="common.js"></script>
+    <script defer src="theme.js"></script>
+    <script defer src="cy-features.js"></script>
+</head>
+<body>
+
+    <div class="bg-animation">
+        <div class="bg-flow-1"></div>
+        <div class="bg-flow-2"></div>
+        <div class="bg-flow-3"></div>
+    </div>
+
+    <header class="cy-shell">
+        <h1>创意引擎 · 生成艺术</h1>
+    </header>
+
+    <main class="cy-page">
+        <div class="cy-card">
+            <h2>🖼 创意画布</h2>
+            <div class="sub">六种程序化生成算法，每点击一次「再画一张」都是独一无二的作品。颜色自动跟随当前主题。</div>
+            <div class="preset-grid" id="presetGrid"></div>
+            <div class="art-wrap">
+                <canvas class="art" id="canvas" width="900" height="560"></canvas>
+            </div>
+            <div class="art-bar">
+                <button class="cy-btn" id="btnRedraw">🎲 再画一张</button>
+                <button class="cy-btn cy-btn-ghost" id="btnSlow">🐢 慢速重绘</button>
+                <button class="cy-btn cy-btn-ghost" id="btnExport">💾 导出 PNG</button>
+                <button class="cy-btn cy-btn-ghost" id="btnSave">🏺 收藏作品</button>
+            </div>
+            <div class="hint">💡 提示：慢速重绘可观赏算法逐帧作画的过程；「收藏作品」会把作品存入本地画廊（最多 12 幅）。</div>
+        </div>
+
+        <div class="cy-card" id="galleryCard" style="display:none;">
+            <h2>🖼 我的画廊</h2>
+            <div id="galleryRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px;"></div>
+        </div>
+    </main>
+
+    <script>
+    /* ========== 生成艺术引擎 ========== */
+    var PRESETS = [
+        { id: 'flow', em: '🌪', nm: '流场', ds: 'Perlin 噪声驱动的粒子轨迹，飘逸如星云', fn: 'drawFlow' },
+        { id: 'tree', em: '🌳', nm: '分形树', ds: '递归分枝 + 黄金角度，森系对称之美', fn: 'drawTree' },
+        { id: 'particle', em: '✨', nm: '粒子', ds: '重力 + 弹性碰撞的粒子烟花', fn: 'drawParticles' },
+        { id: 'wave', em: '🌊', nm: '波纹', ds: '正弦干涉叠加的彩色波纹', fn: 'drawWave' },
+        { id: 'spiral', em: '🌀', nm: '螺旋', ds: '黄金分割螺线，宇宙级秩序感', fn: 'drawSpiral' },
+        { id: 'lissajous', em: '🎻', nm: '利萨如', ds: '双轴正弦共鸣曲线，物理和谐', fn: 'drawLissajous' }
+    ];
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    var curPreset = 'flow';
+    var _artCount = 0;      // 本会话作品数（成就 art_first 用）
+    var _drawing = false;   // 慢速重绘互斥锁
+    var _frame = 0;         // 慢速重绘帧计数
+
+    /* 主题取色（随主题联动） */
+    function themeColors() {
+        var cs = getComputedStyle(document.documentElement);
+        var g = function (name, fallback) {
+            var v = (cs.getPropertyValue(name) || '').trim();
+            return v || fallback;
+        };
+        return {
+            bg: g('--bg', '#0a0e27'),
+            card: g('--card-2', '#151b3b'),
+            accent: g('--accent', '#6366f1'),
+            accent2: g('--accent-2', '#a855f7'),
+            gold: g('--gold', '#22d3ee'),
+            txt: g('--txt', '#e8ecf5')
+        };
+    }
+    function cssColor(name, fallback) {
+        var cs = getComputedStyle(document.documentElement);
+        return (cs.getPropertyValue(name) || '').trim() || fallback;
+    }
+
+    /* 种子随机（可复现同一张） */
+    function mulberry32(a) {
+        return function () {
+            a |= 0; a = a + 0x6D2B79F5 | 0;
+            var t = Math.imul(a ^ a >>> 15, 1 | a);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+
+    /* ---------- 1. 流场（简易 Perlin：余弦插值 + 双网格） ---------- */
+    function perlin2(rand) {
+        var g = [];
+        var S = 8;
+        for (var i = 0; i < S * S; i++) {
+            var a = Math.floor(rand() * Math.PI * 2);
+            g.push([Math.cos(a), Math.sin(a)]);
+        }
+        function smooth(t) { return t * t * (3 - 2 * t); }
+        return function (x, y) {
+            var fx = Math.floor(x / 60), fy = Math.floor(y / 60);
+            var lx = (x - fx * 60) / 60, ly = (y - fy * 60) / 60;
+            var x0 = ((fx % S) + S) % S, y0 = ((fy % S) + S) % S;
+            var x1 = (x0 + 1) % S, y1 = (y0 + 1) % S;
+            function dot(g, dx, dy) { return g[0] * dx + g[1] * dy; }
+            var v00 = dot(g[y0 * S + x0], lx, ly);
+            var v10 = dot(g[y0 * S + x1], lx - 1, ly);
+            var v01 = dot(g[y1 * S + x0], lx, ly - 1);
+            var v11 = dot(g[y1 * S + x1], lx - 1, ly - 1);
+            var sx = smooth(lx), sy = smooth(ly);
+            return (v00 + (v10 - v00) * sx) + ((v01 + (v11 - v01) * sx) - (v00 + (v10 - v00) * sx)) * sy;
+        };
+    }
+    function drawFlow(rand, animate) {
+        var noize = perlin2(rand);
+        ctx.fillStyle = themeColors().bg;
+        ctx.fillRect(0, 0, W, H);
+        var cols = [themeColors().accent, themeColors().accent2, themeColors().gold];
+        for (var p = 0; p < 150; p++) {
+            var x = rand() * W, y = rand() * H;
+            ctx.strokeStyle = cols[Math.floor(rand() * cols.length)];
+            ctx.globalAlpha = 0.32 + rand() * 0.3;
+            ctx.lineWidth = 1.1 + rand() * 1.4;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            var steps = animate ? 26 : 120;
+            for (var s = 0; s < steps; s++) {
+                var a = noize(x, y) * Math.PI * 2;
+                x += Math.cos(a) * 4.2;
+                y += Math.sin(a) * 4.2;
+                ctx.lineTo(x, y);
+                if (x < 0 || x > W || y < 0 || y > H) break;
+            }
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    /* ---------- 2. 分形树 ---------- */
+    function drawTree(rand, animate) {
+        ctx.fillStyle = themeColors().bg;
+        ctx.fillRect(0, 0, W, H);
+        var cols = [themeColors().accent, themeColors().accent2, themeColors().gold];
+        ctx.lineCap = 'round';
+        function branch(x, y, len, angle, depth) {
+            if (len < 3 || depth > 11) return;
+            var nx = x + Math.cos(angle) * len;
+            var ny = y + Math.sin(angle) * len;
+            var c = cols[Math.floor(rand() * cols.length)];
+            ctx.strokeStyle = c;
+            ctx.globalAlpha = 0.5 + depth / 16;
+            ctx.lineWidth = Math.max(0.6, len / 14);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(nx, ny);
+            ctx.stroke();
+            if (depth >= (animate ? 2 : 11)) return;
+            var spread = 0.32 + rand() * 0.12;
+            var shrink = 0.72 + rand() * 0.06;
+            branch(nx, ny, len * shrink, angle - spread, depth + 1);
+            branch(nx, ny, len * shrink, angle + spread, depth + 1);
+            if (rand() > 0.45) branch(nx, ny, len * shrink * 0.85, angle, depth + 1);
+        }
+        branch(W / 2, H + 12, H * 0.32, -Math.PI / 2, 0);
+        ctx.globalAlpha = 1;
+    }
+
+    /* ---------- 3. 粒子（重力 + 随机扰动） ---------- */
+    function drawParticles(rand, animate) {
+        ctx.fillStyle = themeColors().bg;
+        ctx.fillRect(0, 0, W, H);
+        var cols = [themeColors().accent, themeColors().accent2, themeColors().gold];
+        var N = 220;
+        var ps = [];
+        for (var i = 0; i < N; i++) {
+            ps.push({
+                x: rand() * W, y: rand() * H,
+                vx: (rand() - 0.5) * 1.6, vy: (rand() - 0.5) * 1.6 - 0.4,
+                r: 1 + rand() * 2.6, c: cols[Math.floor(rand() * cols.length)],
+                life: 0.4 + rand() * 0.6
+            });
+        }
+        var steps = animate ? 26 : 200;
+        for (var s = 0; s < steps; s++) {
+            for (var i = 0; i < N; i++) {
+                var p = ps[i];
+                p.vy += 0.012;
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.y > H + 6) { p.y = -6; p.x = rand() * W; p.vy = (rand() - 0.5) * 1.6 - 0.6; }
+                if (p.x < -6) p.x = W + 6;
+                if (p.x > W + 6) p.x = -6;
+                ctx.globalAlpha = Math.min(0.85, p.life + s * 0.004);
+                ctx.fillStyle = p.c;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    /* ---------- 4. 波纹（正弦干涉） ---------- */
+    function drawWave(rand, animate) {
+        ctx.fillStyle = themeColors().bg;
+        ctx.fillRect(0, 0, W, H);
+        var cols = [themeColors().accent, themeColors().accent2, themeColors().gold, themeColors().txt];
+        var seeds = [];
+        var N = 4;
+        for (var i = 0; i < N; i++) {
+            seeds.push({ x: rand() * W, y: rand() * H, a: rand() * Math.PI * 2, c: cols[Math.floor(rand() * cols.length)] });
+        }
+        var step = animate ? 9 : 3;
+        for (var y = 0; y < H; y += step) {
+            for (var x = 0; x < W; x += step) {
+                var v = 0;
+                for (var k = 0; k < N; k++) {
+                    var d = Math.sqrt((x - seeds[k].x) * (x - seeds[k].x) + (y - seeds[k].y) * (y - seeds[k].y));
+                    v += Math.sin(d * 0.035 + seeds[k].a);
+                }
+                v /= N;
+                var n = (v + 1) / 2; // 0..1
+                var idx = Math.floor(n * (cols.length - 0.001));
+                ctx.globalAlpha = 0.25 + n * 0.6;
+                ctx.fillStyle = cols[idx];
+                ctx.fillRect(x, y, step + 1, step + 1);
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    /* ---------- 5. 螺旋（黄金螺线点阵） ---------- */
+    function drawSpiral(rand, animate) {
+        ctx.fillStyle = themeColors().bg;
+        ctx.fillRect(0, 0, W, H);
+        var cols = [themeColors().accent, themeColors().accent2, themeColors().gold];
+        var cx = W / 2, cy = H / 2;
+        var maxR = Math.hypot(W, H) / 2;
+        var n = animate ? 300 : 1400;
+        var turn = 4 + rand() * 4;
+        for (var i = 0; i < n; i++) {
+            var t = i / n;
+            var a = t * Math.PI * 2 * turn;
+            var r = maxR * (0.02 + t * 0.95);
+            var x = cx + Math.cos(a) * r;
+            var y = cy + Math.sin(a) * r;
+            ctx.fillStyle = cols[i % cols.length];
+            ctx.globalAlpha = 0.25 + t * 0.7;
+            var size = 1.2 + t * 5;
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    /* ---------- 6. 利萨如曲线 ---------- */
+    function drawLissajous(rand, animate) {
+        ctx.fillStyle = themeColors().bg;
+        ctx.fillRect(0, 0, W, H);
+        var cols = [themeColors().accent, themeColors().accent2, themeColors().gold];
+        var ax = 3 + Math.floor(rand() * 4), ay = 4 + Math.floor(rand() * 4);
+        var px = 1 + Math.floor(rand() * 2), py = 1 + Math.floor(rand() * 2);
+        var step = animate ? Math.PI / 26 : Math.PI / 420;
+        var max = Math.PI * 2 * ax * ay * 2;
+        for (var layer = 0; layer < 3; layer++) {
+            ctx.strokeStyle = cols[layer];
+            ctx.globalAlpha = 0.55;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            var phase = layer * 0.6;
+            for (var a = 0; a < max; a += step) {
+                var x = W / 2 + (Math.sin(ax * a + phase) * Math.cos(px * a)) * (W / 2.6);
+                var y = H / 2 + (Math.sin(ay * a + phase) * Math.cos(py * a)) * (H / 2.6);
+                if (a === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    /* ---------- 主绘制调度 ---------- */
+    var FN = {
+        flow: drawFlow, tree: drawTree, particle: drawParticles,
+        wave: drawWave, spiral: drawSpiral, lissajous: drawLissajous
+    };
+    function draw(animate) {
+        if (_drawing) return;
+        _drawing = true;
+        var rand = mulberry32(Math.floor(Math.random() * 1e9));
+        if (!animate) {
+            FN[curPreset](rand, false);
+            _drawing = false;
+            return;
+        }
+        // 慢速重绘：分帧推进
+        var frames = 24;
+        var f = 0;
+        function tick() {
+            if (f >= frames) { _drawing = false; return; }
+            f++;
+            FN[curPreset](rand, true);
+            ctx.strokeStyle = 'rgba(255,255,255,.14)';
+            ctx.setLineDash([6, 8]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, H - 8);
+            ctx.lineTo(W * (f / frames), H - 8);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            requestAnimationFrame(tick);
+        }
+        tick();
+    }
+
+    /* ========== 收藏 / 画廊 ========== */
+    function readGallery() { try { var a = JSON.parse(localStorage.getItem('cy_art_gallery')); if (Object.prototype.toString.call(a) === '[object Array]') return a; } catch (e) {} return []; }
+    function saveArt() {
+        var url = canvas.toDataURL('image/png');
+        var g = readGallery();
+        if (g.length >= 12) g = g.slice(1);
+        g.push({ url: url, preset: curPreset, at: Date.now() });
+        try { localStorage.setItem('cy_art_gallery', JSON.stringify(g)); } catch (e) { CY.showToast('存储已满，无法收藏'); return; }
+        renderGallery();
+        CY.showToast('🏺 作品已收藏');
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'save_art', page: '6.html' });
+    }
+    function renderGallery() {
+        var g = readGallery();
+        var card = document.getElementById('galleryCard');
+        var row = document.getElementById('galleryRow');
+        if (!g.length) { card.style.display = 'none'; return; }
+        card.style.display = '';
+        row.innerHTML = '';
+        g.slice().reverse().forEach(function (it, i) {
+            var d = document.createElement('div');
+            d.style.cssText = 'border-radius:10px;overflow:hidden;border:1px solid var(--zl-border);position:relative;background:var(--zl-card-2);';
+            var img = document.createElement('img');
+            img.src = it.url;
+            img.style.cssText = 'width:100%;display:block;aspect-ratio:900/560;object-fit:cover;cursor:pointer;';
+            img.onclick = function () {
+                try { navigator.clipboard.writeText(it.url).then(function () { CY.showToast('图片 dataURL 已复制'); }).catch(function () {}); } catch (e) {}
+            };
+            var del = document.createElement('button');
+            del.textContent = '🗑';
+            del.style.cssText = 'position:absolute;top:6px;right:6px;border:none;background:rgba(0,0,0,.55);color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;';
+            del.onclick = function () {
+                var list = readGallery();
+                list.splice(list.length - 1 - i, 1);
+                try { localStorage.setItem('cy_art_gallery', JSON.stringify(list)); } catch (e2) {}
+                renderGallery();
+            };
+            d.appendChild(img);
+            d.appendChild(del);
+            row.appendChild(d);
+        });
+    }
+
+    /* ========== 初始化 ========== */
+    var presetGrid = document.getElementById('presetGrid');
+    PRESETS.forEach(function (p) {
+        var it = document.createElement('div');
+        it.className = 'preset-item' + (p.id === curPreset ? ' active' : '');
+        it.innerHTML = '<div class="em">' + p.em + '</div><div class="nm">' + p.nm + '</div><div class="ds">' + p.ds + '</div>';
+        it.onclick = function () {
+            curPreset = p.id;
+            document.querySelectorAll('.preset-item').forEach(function (x) { x.classList.remove('active'); });
+            it.classList.add('active');
+            draw(false);
+        };
+        presetGrid.appendChild(it);
+    });
+
+    document.getElementById('btnRedraw').onclick = function () { draw(false); };
+    document.getElementById('btnSlow').onclick = function () { draw(true); };
+    document.getElementById('btnExport').onclick = function () {
+        var a = document.createElement('a');
+        a.download = 'creative-' + curPreset + '-' + Date.now() + '.png';
+        a.href = canvas.toDataURL('image/png');
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { a.remove(); }, 500);
+        CY.showToast('💾 PNG 已导出');
+    };
+    document.getElementById('btnSave').onclick = saveArt;
+
+    draw(false);
+    _artCount = 1;
+    CY.unlock('art_first');
+    renderGallery();
+    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'gen_art', page: '6.html' });
+    </script>
+</body>
+</html>

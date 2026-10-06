@@ -1,0 +1,27 @@
+# ---- 系统垃圾文件 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ---- 编辑器 / IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+~$*
+
+# ---- Node ----
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ---- 本地构建中间产物 ----
+*.log
+dist/
+.tmp/
+
+# ---- 注意 ----
+# 工具脚本/ 请保留上传：build.js 会在本地生成 sitemap.xml 与 service-worker.js
+# 这两份文件已经被 Git 跟踪，是站点运行必需文件，不要忽略。
