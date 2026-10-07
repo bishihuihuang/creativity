@@ -483,3 +483,524 @@ input::placeholder, textarea::placeholder { color: var(--dim) !important; }
     .cy-input { min-width: 0; width: 100%; }
     .cy-btn { padding: 9px 14px; font-size: 13px; }
 }
+
+/* =====================================================================
+   玻璃拟态交互模块（全局）—— 液态胶囊 / 跟随柔光 / 就地放大 / 水滴筛选
+   颜色一律走 --zl-* 与 --glow* 令牌，兼容 9 套主题；零依赖、纯静态。
+   ===================================================================== */
+:root {
+    --glass-bg: rgba(255, 255, 255, .10);
+    --glass-line: rgba(255, 255, 255, .22);
+    --glass-hi: rgba(255, 255, 255, .18);
+    --glass-blur: blur(18px) saturate(160%);
+    --ease-pop: cubic-bezier(.34, 1.56, .64, 1);
+    --ease-glass: cubic-bezier(.22, 1, .36, 1);
+    --liquid-grad: linear-gradient(135deg, var(--glow), var(--glow-2) 55%, var(--glow-3));
+}
+/* 浅色主题下玻璃要更实一档，否则压在白底上不可见 */
+:root[data-theme="light"], :root[data-theme="milk"], :root[data-theme="gold"] {
+    --glass-bg: rgba(255, 255, 255, .55);
+    --glass-line: rgba(255, 255, 255, .75);
+    --glass-hi: rgba(255, 255, 255, .85);
+}
+
+/* ---------- ① 液态滑动胶囊（可复用横向菜单） ---------- */
+.cy-liquid-nav {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 2px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.cy-liquid-pill {
+    position: absolute; top: 4px; left: 4px;
+    height: calc(100% - 8px);
+    border-radius: 999px;
+    background: var(--liquid-grad);
+    box-shadow: 0 6px 20px rgba(0,0,0,.28), 0 0 26px color-mix(in srgb, var(--glow) 55%, transparent);
+    transition: left .5s var(--ease-pop), width .5s var(--ease-pop), transform .5s var(--ease-pop);
+    will-change: left, width, transform;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+/* 胶囊表面流光，营造液态反光 */
+.cy-liquid-pill::after {
+    content: ''; position: absolute; top: -70%; left: -70%; width: 55%; height: 240%;
+    background: linear-gradient(115deg, transparent 22%, rgba(255,255,255,.55) 50%, transparent 78%);
+    transform: translateX(-160%) skewX(-14deg);
+    animation: cyLiquidSheen 3.4s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes cyLiquidSheen {
+    0% { transform: translateX(-160%) skewX(-14deg); }
+    55%, 100% { transform: translateX(320%) skewX(-14deg); }
+}
+/* 胶囊落位后的弹性回弹 */
+.cy-liquid-pill.is-landed { animation: cyPillBounce .55s var(--ease-pop); }
+@keyframes cyPillBounce {
+    0% { transform: scale(.86, 1.06); }
+    45% { transform: scale(1.06, .95); }
+    72% { transform: scale(.98, 1.02); }
+    100% { transform: scale(1); }
+}
+.cy-liquid-nav > .cy-ln-item {
+    position: relative; z-index: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 44px; min-height: 40px; padding: 0 14px;
+    border: 0; border-radius: 999px; background: none; cursor: pointer;
+    color: var(--zl-muted);
+    font-size: 13px; font-weight: 700; letter-spacing: .5px;
+    transition: color .3s ease, transform .4s var(--ease-pop);
+    white-space: nowrap;
+}
+.cy-liquid-nav > .cy-ln-item:hover { color: var(--zl-text); transform: translateY(-2px); }
+.cy-liquid-nav > .cy-ln-item.is-active { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.35); }
+
+/* 采纳既有菜单条（如 .cy-tab-row）：不重建按钮，只叠一层液态胶囊 */
+.cy-liquid-adopt { position: relative; }
+.cy-liquid-adopt > * { position: relative; z-index: 1; }
+.cy-liquid-adopt .cy-liquid-pill {
+    top: 0; height: 100%;
+    box-shadow: 0 4px 18px rgba(0,0,0,.30), 0 0 22px color-mix(in srgb, var(--glow) 60%, transparent);
+}
+/* 胶囊本身充当"当前项"底色，原按钮背景退让，避免出现双层填充 */
+.cy-liquid-adopt .cy-tab.active {
+    background: rgba(255,255,255,.14);
+    border-color: rgba(255,255,255,.30);
+    color: #fff;
+    box-shadow: 0 1px 6px rgba(0,0,0,.25);
+}
+.cy-liquid-adopt .cy-tab:not(.active):hover { color: var(--zl-text); }
+
+/* ---------- ⑥ 玻璃停靠栏（底部居中浮动，仅图标） ---------- */
+.cy-dock {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    z-index: 2000;
+    display: flex; align-items: center; gap: 4px;
+    max-width: calc(100vw - 24px);
+    padding: 7px 10px;
+    border-radius: 22px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%);
+    box-shadow: 0 18px 48px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.28);
+    overflow-x: auto; scrollbar-width: none;
+}
+.cy-dock::-webkit-scrollbar { display: none; }
+.cy-dock-item {
+    position: relative;
+    flex: 0 0 auto;
+    width: 46px; height: 46px; border-radius: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 21px; line-height: 1;
+    border: 0; background: none; cursor: pointer;
+    color: var(--zl-text);
+    transition: transform .38s var(--ease-pop), background .3s ease, box-shadow .3s ease, color .3s ease;
+    will-change: transform;
+}
+/* 悬停：当前图标上浮放大 */
+.cy-dock-item:hover {
+    transform: translateY(-11px) scale(1.3);
+    background: var(--glass-hi);
+    box-shadow: 0 10px 22px rgba(0,0,0,.28), 0 0 20px color-mix(in srgb, var(--glow) 40%, transparent);
+}
+/* 悬停：相邻图标跟随放大（近 / 次近两档） */
+.cy-dock-item.is-neighbor { transform: translateY(-5px) scale(1.14); }
+.cy-dock-item.is-neighbor-far { transform: translateY(-2px) scale(1.07); }
+.cy-dock-item.is-active {
+    background: var(--glass-hi);
+    color: var(--glow);
+    box-shadow: inset 0 -2px 0 var(--glow);
+}
+.cy-dock-tip {
+    position: absolute; bottom: calc(100% + 12px); left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 6px 11px; border-radius: 9px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+    color: var(--zl-text);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .25s ease, transform .3s var(--ease-pop);
+}
+.cy-dock-item:hover .cy-dock-tip {
+    opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+}
+/* 停靠栏占位条，防止内容被压住 */
+.cy-dock-spacer { height: 84px; }
+@media (max-width: 768px) {
+    .cy-dock-item { width: 40px; height: 40px; font-size: 18px; }
+    .cy-dock-spacer { height: 74px; }
+}
+
+/* ---------- ② 跟随柔光 + 边框局部提亮 + 3D 倾斜 ---------- */
+/* 被赋能卡片需 relative 定位以承载光效层 */
+.cy-gl-host {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .5s var(--ease-glass), box-shadow .45s ease;
+    will-change: transform;
+}
+/* 追踪鼠标期间关掉长过渡，保证实时跟随 */
+.cy-gl-host.is-tracking { transition: transform .07s linear, box-shadow .3s ease; }
+/* 柔光层：自身 overflow 裁剪，不遮挡卡片内部元素 */
+.cy-gl {
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 0;
+    transition: opacity .35s ease;
+}
+.cy-gl-host:hover .cy-gl { opacity: 1; }
+/* 跟随鼠标的底部柔光 */
+.cy-gl::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255,255,255,.25), rgba(255,255,255,.05) 32%, transparent 60%);
+}
+/* 边框局部提亮：mask 只保留 1px 描边 */
+.cy-gl::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255,255,255,.9), color-mix(in srgb, var(--glow-3) 55%, transparent) 38%, transparent 68%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+}
+/* 光效层不拦截事件；卡片倾斜由 JS 直接写 transform，避免与各卡片 hover 规则冲突 */
+/* 浅色主题柔光需更亮才可辨 */
+:root[data-theme="light"] .cy-gl::before,
+:root[data-theme="milk"] .cy-gl::before {
+    background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255,255,255,.85), rgba(255,255,255,.2) 30%, transparent 60%);
+}
+
+/* ---------- ③ 就地放大舞台 + 底部玻璃缩略条 ---------- */
+/* 舞台覆盖整个视口；未打开时不拦截事件 */
+.cy-stage { position: fixed; inset: 0; z-index: 2400; pointer-events: none; }
+.cy-stage.is-open { pointer-events: auto; }
+/* 舞台背景：轻微压暗 + 模糊，突出被放大的模块 */
+.cy-stage-back {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 45%, rgba(6,9,22,.35), rgba(4,6,18,.78));
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    opacity: 0; transition: opacity .4s ease;
+}
+.cy-stage.is-open .cy-stage-back { opacity: 1; }
+/* 放大后的模块宿主 */
+.cy-stage-body {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 52px 4vw 118px;
+}
+/* 被放大的模块本身：浮起 + 深阴影 */
+.cy-stage-body > .cy-dash-mod {
+    width: min(1080px, 100%);
+    box-shadow: 0 40px 90px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
+    transform: scale(1);
+}
+/* 关闭按钮 */
+.cy-stage-close {
+    position: fixed; top: 18px; right: 18px; z-index: 2600;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--glass-line);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--zl-text); font-size: 20px; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    transition: transform .35s var(--ease-pop), background .3s ease;
+}
+.cy-stage.is-open .cy-stage-close { display: inline-flex; }
+.cy-stage-close:hover { transform: scale(1.12) rotate(90deg); background: var(--glass-hi); }
+
+/* 底部玻璃缩略条：舞台开启时从下方滑入 */
+.cy-thumbs {
+    position: fixed; left: 50%; bottom: 26px;
+    transform: translateX(-50%) translateY(160%);
+    display: flex; align-items: center; gap: 8px;
+    max-width: calc(100vw - 24px);
+    padding: 8px 10px;
+    border-radius: 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%);
+    box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25);
+    overflow-x: auto; scrollbar-width: none;
+    transition: transform .45s var(--ease-glass);
+    z-index: 2500;
+}
+.cy-thumbs::-webkit-scrollbar { display: none; }
+.cy-stage.is-open .cy-thumbs { transform: translateX(-50%); }
+.cy-thumb {
+    flex: 0 0 auto;
+    width: 104px; height: 46px; border-radius: 11px;
+    border: 1px solid var(--glass-line);
+    background: rgba(255,255,255,.08);
+    padding: 5px 7px;
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px;
+    cursor: pointer; overflow: hidden;
+    transition: transform .3s var(--ease-pop), background .25s ease, border-color .25s ease;
+}
+.cy-thumb:hover { transform: translateY(-3px) scale(1.05); background: var(--glass-hi); }
+.cy-thumb.is-current {
+    border-color: var(--glow);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 45%, transparent);
+}
+/* 缩略条内迷你走势图 */
+.cy-thumb .cy-thumb-spark { display: block; width: 100%; height: 18px; opacity: .95; }
+.cy-thumb .cy-thumb-name {
+    font-size: 10px; font-weight: 700; color: var(--zl-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
+}
+.cy-thumb.is-current .cy-thumb-name { color: var(--zl-text); }
+
+/* ---------- 数据看板布局（承载 ③④） ---------- */
+.cy-dash { margin-bottom: 30px; }
+.cy-dash-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.cy-dash-title { font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+.cy-dash-title small {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--zl-muted); letter-spacing: 0; margin-top: 4px;
+}
+.cy-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+@media (max-width: 900px) { .cy-metrics { grid-template-columns: repeat(2, 1fr); } }
+.cy-metric {
+    padding: 14px 16px; border-radius: 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.cy-metric .cy-metric-label { font-size: 12px; color: var(--zl-muted); font-weight: 600; }
+.cy-metric .cy-metric-num {
+    font-size: 26px; font-weight: 800; letter-spacing: .5px;
+    font-variant-numeric: tabular-nums; line-height: 1.25; margin-top: 4px;
+    color: var(--zl-text);
+}
+.cy-metric .cy-metric-trend { font-size: 12px; font-weight: 700; margin-top: 2px; }
+.cy-metric .cy-metric-trend.up { color: var(--green); }
+.cy-metric .cy-metric-trend.down { color: var(--red); }
+.cy-dash-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+}
+@media (max-width: 900px) { .cy-dash-grid { grid-template-columns: 1fr; } }
+/* 图表模块 */
+.cy-dash-mod {
+    padding: 16px 16px 12px; border-radius: 18px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 10px 30px rgba(0,0,0,.2);
+    cursor: zoom-in;
+    transition: transform .35s var(--ease-glass), box-shadow .35s ease, border-color .3s ease;
+}
+.cy-dash-mod:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--glow) 55%, transparent);
+    box-shadow: 0 16px 40px rgba(0,0,0,.3);
+}
+.cy-dash-mod-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.cy-dash-mod-title { font-size: 14px; font-weight: 800; color: var(--zl-text); }
+.cy-dash-mod-hint { font-size: 11px; color: var(--zl-muted); }
+.cy-dash-mod canvas { display: block; width: 100%; }
+/* 舞台中放大的模块允许滚动、取消放大手势 */
+.cy-stage .cy-dash-mod { overflow: auto; cursor: default; }
+
+/* ---------- ④ 水滴分裂筛选 ---------- */
+/* 容器：折叠态为一颗胶囊，展开态分裂出多个选项 */
+.cy-drip { position: relative; display: inline-flex; align-items: center; }
+.cy-drip-capsule {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-line);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--zl-text); font-size: 13px; font-weight: 700;
+    cursor: pointer; user-select: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+    transition: transform .35s var(--ease-pop), background .3s ease, box-shadow .3s ease,
+        border-radius .5s var(--ease-glass), flex-basis .5s var(--ease-glass);
+}
+.cy-drip-capsule:hover { transform: translateY(-2px); background: var(--glass-hi); }
+.cy-drip-capsule .cy-drip-caret {
+    font-size: 10px; transition: transform .45s var(--ease-pop);
+}
+/* 展开：胶囊自身“让位”，圆角收方，成为选项组的底衬 */
+.cy-drip.is-open .cy-drip-capsule {
+    transform: translateY(-2px) scale(.96);
+    box-shadow: 0 8px 22px rgba(0,0,0,.28);
+}
+.cy-drip.is-open .cy-drip-caret { transform: rotate(180deg); }
+.cy-drip-menu {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 10px 26px rgba(0,0,0,.28);
+    opacity: 0; visibility: hidden;
+    transform: scale(.72); transform-origin: 12px 50%;
+    transition: opacity .3s ease, transform .5s var(--ease-pop), visibility 0s linear .5s;
+}
+.cy-drip.is-open .cy-drip-menu {
+    opacity: 1; visibility: visible;
+    transform: scale(1);
+    transition: opacity .3s ease, transform .5s var(--ease-pop), visibility 0s;
+}
+/* 单个选项：从胶囊位置分裂飞出（液态扩散） */
+.cy-drip-opt {
+    display: inline-flex; align-items: center; gap: 5px;
+    min-width: 62px; height: 32px; padding: 0 13px;
+    border-radius: 999px;
+    border: 0; background: rgba(255,255,255,.1);
+    color: var(--zl-text); font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateX(-30px) scale(.5);
+    filter: blur(5px);
+    transition: opacity .4s ease, transform .55s var(--ease-pop), filter .45s ease,
+        background .25s ease, color .25s ease, box-shadow .25s ease;
+}
+/* 展开时逐项飞出，错峰 60ms 形成分裂感 */
+.cy-drip.is-open .cy-drip-opt {
+    opacity: 1; transform: translateX(0) scale(1); filter: blur(0);
+}
+.cy-drip.is-open .cy-drip-opt:nth-child(1) { transition-delay: 0s, 0s, 0s, .25s, .25s, .25s; }
+.cy-drip.is-open .cy-drip-opt:nth-child(2) { transition-delay: .06s, .06s, .06s, .31s, .31s, .31s; }
+.cy-drip.is-open .cy-drip-opt:nth-child(3) { transition-delay: .12s, .12s, .12s, .37s, .37s, .37s; }
+.cy-drip.is-open .cy-drip-opt:nth-child(4) { transition-delay: .18s, .18s, .18s, .43s, .43s, .43s; }
+.cy-drip-opt:hover { background: var(--glass-hi); }
+/* 选中项：液态高亮底 + 其余融回 */
+.cy-drip-opt.is-on {
+    background: var(--liquid-grad);
+    color: #fff;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--glow) 55%, transparent);
+}
+@media (max-width: 620px) {
+    .cy-drip { position: static; display: flex; width: 100%; }
+    .cy-drip-menu {
+        position: static; transform-origin: 12px 50%;
+        margin-top: 8px; width: 100%;
+    }
+}
+
+/* ---------- ⑤ 命令面板（Ctrl+K） ---------- */
+.cy-cmd-backdrop {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(5, 8, 20, .5);
+    backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 15vh 16px 16px;
+    opacity: 0; visibility: hidden;
+    transition: opacity .28s ease, visibility 0s linear .3s;
+}
+.cy-cmd-backdrop.is-open {
+    opacity: 1; visibility: visible;
+    transition: opacity .28s ease, visibility 0s;
+}
+.cy-cmd-panel {
+    width: min(640px, 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: blur(26px) saturate(170%); -webkit-backdrop-filter: blur(26px) saturate(170%);
+    box-shadow: 0 34px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.25);
+    transform: translateY(-16px) scale(.965);
+    transition: transform .32s var(--ease-pop);
+}
+.cy-cmd-backdrop.is-open .cy-cmd-panel { transform: none; }
+.cy-cmd-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--glass-line);
+}
+.cy-cmd-bar > span { font-size: 17px; }
+.cy-cmd-input {
+    flex: 1; border: 0; outline: 0; background: transparent;
+    color: var(--zl-text); font-size: 16px; font-family: inherit;
+}
+.cy-cmd-input::placeholder { color: var(--zl-muted); }
+.cy-cmd-hint {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 7px; border-radius: 6px;
+    background: var(--glass-hi); color: var(--zl-muted);
+    border: 1px solid var(--glass-line);
+}
+.cy-cmd-results { max-height: 46vh; overflow-y: auto; padding: 6px; }
+.cy-cmd-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 12px;
+    cursor: pointer; color: var(--zl-text);
+    transition: background .18s ease, transform .18s ease;
+}
+.cy-cmd-item.is-selected, .cy-cmd-item:hover {
+    background: var(--glass-hi);
+    transform: translateX(3px);
+}
+.cy-cmd-item .cy-cmd-ico {
+    width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid var(--glass-line);
+}
+.cy-cmd-item .cy-cmd-body { flex: 1; min-width: 0; }
+.cy-cmd-item .cy-cmd-name { font-size: 14px; font-weight: 700; }
+.cy-cmd-item .cy-cmd-desc {
+    font-size: 12px; color: var(--zl-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 匹配片段高亮：用主题色下划发光，不改动主题文字色 */
+.cy-cmd-item mark {
+    background: none; color: inherit;
+    font-weight: 800;
+    border-bottom: 2px solid var(--glow);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--glow) 65%, transparent);
+}
+.cy-cmd-empty { padding: 22px; text-align: center; color: var(--zl-muted); font-size: 13px; }
+.cy-cmd-foot {
+    display: flex; align-items: center; gap: 14px;
+    padding: 9px 16px;
+    border-top: 1px solid var(--glass-line);
+    font-size: 11px; color: var(--zl-muted);
+}
+.cy-cmd-foot .cy-cmd-foot-k { font-weight: 800; color: var(--zl-text); }
+/* 命令项右侧的文件名/分组标记 */
+.cy-cmd-keys {
+    flex: 0 0 auto;
+    font-size: 11px; color: var(--zl-muted);
+    padding: 3px 7px; border-radius: 6px;
+    background: var(--glass-hi);
+    border: 1px solid var(--glass-line);
+    white-space: nowrap;
+}
+.cy-cmd-item.is-selected .cy-cmd-keys { color: var(--zl-text); }
+
+/* 停靠栏末尾的细分隔条 */
+.cy-dock-sep {
+    flex: 0 0 auto;
+    position: relative;
+    width: 1px; height: 26px;
+    margin: 0 3px;
+    background: var(--glass-line);
+}
+.cy-dock-sep .cy-dock-tip { bottom: calc(100% + 12px); }
+
+/* 看板图表画布：网格内与舞台内两档高度 */
+.cy-dash-mod canvas { height: 190px; }
+@media (max-width: 620px) { .cy-dash-mod canvas { height: 150px; } }
+
+
+
