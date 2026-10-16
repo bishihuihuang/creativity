@@ -1,6 +1,6 @@
 /* 创意引擎 Service Worker —— 离线缓存
  * 版本号与预缓存清单由 工具脚本/build.js 构建时自动生成，勿手改 CACHE_VERSION 与 PRECACHE 以下区域 */
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.1';
 const CACHE_NAME = 'cy-muse-' + CACHE_VERSION;
 const PRECACHE = [
   './',
@@ -30,7 +30,8 @@ const PRECACHE = [
   'icon-192.png',
   'icon-512.png',
   'robots.txt',
-  'sitemap.xml'
+  'sitemap.xml',
+  'cy-dashboard.js'
 ];
 
 self.addEventListener('install', function (event) {
