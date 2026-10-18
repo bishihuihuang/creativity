@@ -35,13 +35,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -190,7 +184,7 @@
     function randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
     function renderText(cat, tpl, picks) {
-        return tpl.replace(/\{(\w+)\}/g, function (_, k) { return picks[k] || '【' + k + '】'; });
+        return tpl.replace(/\{(\w+)\}/g, function (_, slotKey) { return picks[slotKey] || '【' + slotKey + '】'; });
     }
 
     function newIdea() {
@@ -200,7 +194,7 @@
         const tpl = cat.templates[tplIdx];
         const keys = tpl.match(/\{(\w+)\}/g).map(s => s.slice(1, -1));
         const picks = {}, locks = {};
-        keys.forEach(k => { picks[k] = randItem(cat.slots[k]); locks[k] = false; });
+        keys.forEach(slotKey => { picks[slotKey] = randItem(cat.slots[slotKey]); locks[slotKey] = false; });
         cur = { catIdx: catIdx, tplIdx: tplIdx, picks: picks, locks: locks };
         draw();
     }
@@ -209,7 +203,7 @@
         if (!cur) return;
         const cat = CATS[cur.catIdx];
         const keys = Object.keys(cur.picks);
-        keys.forEach(k => { if (!cur.locks[k]) cur.picks[k] = randItem(cat.slots[k]); });
+        keys.forEach(slotKey => { if (!cur.locks[slotKey]) cur.picks[slotKey] = randItem(cat.slots[slotKey]); });
         draw();
     }
 
@@ -221,10 +215,10 @@
         const text = renderText(cat, tpl, cur.picks);
 
         let chips = '';
-        keys.forEach(k => {
-            const locked = cur.locks[k];
-            chips += '<span class="slot-chip' + (locked ? ' locked' : '') + '" data-k="' + k + '">' +
-                '<span class="lk">' + (locked ? '🔒' : '🔓') + '</span>' + CY.escapeHtml(cur.picks[k]) + '</span>';
+        keys.forEach(slotKey => {
+            const locked = cur.locks[slotKey];
+            chips += '<span class="slot-chip' + (locked ? ' locked' : '') + '" data-k="' + slotKey + '">' +
+                '<span class="lk">' + (locked ? '🔒' : '🔓') + '</span>' + CY.escapeHtml(cur.picks[slotKey]) + '</span>';
         });
 
         ideaBox.dataset.cat = cur.catIdx;
@@ -234,25 +228,25 @@
             '<div class="sub" style="margin-top:8px;">点击槽位 🔒 锁定，再点「重掷未锁定」只换其余部分</div>';
     }
 
-    function batch(n) {
+    function batch(count) {
         const catIdx = parseInt(ideaBox.dataset.cat || '0');
         const cat = CATS[catIdx];
         const arr = [];
-        for (let i = 0; i < n; i++) {
+        for (let idx = 0; idx < count; idx++) {
             const tpl = randItem(cat.templates);
             const keys = tpl.match(/\{(\w+)\}/g).map(s => s.slice(1, -1));
             const picks = {};
-            keys.forEach(k => { picks[k] = randItem(cat.slots[k]); });
+            keys.forEach(slotKey => { picks[slotKey] = randItem(cat.slots[slotKey]); });
             arr.push({ cat: cat.name, text: renderText(cat, tpl, picks) });
         }
-        batchList.innerHTML = arr.map((it, i) =>
+        batchList.innerHTML = arr.map((it, idx) =>
             '<div class="gen-item"><span class="txt"><span class="tag-pill">' + CY.escapeHtml(it.cat.replace(/^[^\s]+\s/, '')) + '</span>' + CY.escapeHtml(it.text) +
-            '</span><span class="ops"><button class="cy-icon-btn fav" title="收藏" data-i="' + i + '" data-t="' + CY.escapeHtml(it.text).replace(/"/g, '&quot;') + '">♥</button></span></div>'
+            '</span><span class="ops"><button class="cy-icon-btn fav" title="收藏" data-i="' + idx + '" data-t="' + CY.escapeHtml(it.text).replace(/"/g, '&quot;') + '">♥</button></span></div>'
         ).join('');
         batchList.querySelectorAll('button.fav').forEach(btn => {
             btn.onclick = function () { addFav(this.dataset.t); };
         });
-        if (n > 0) {
+        if (count > 0) {
             if (window.CY && CY.activity) CY.activity.add({ type: 'gen_idea', page: '1.html' });
             if (window.CY && CY.unlock) CY.unlock('idea_first');
         }
@@ -288,10 +282,10 @@
             '<button class="cy-btn cy-btn-sm cy-btn-danger" id="favClear">清空</button></div>' : '') + '</div>';
         document.body.appendChild(panel);
         const body = panel.querySelector('#favBody');
-        list.forEach((t, i) => {
+        list.forEach((text, idx) => {
             const row = document.createElement('div');
             row.style.cssText = 'background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--txt);line-height:1.8;display:flex;gap:8px;align-items:flex-start;';
-            row.innerHTML = '<span style="flex:1;">' + CY.escapeHtml(t) + '</span><button class="cy-icon-btn" data-i="' + i + '">🗑️</button>';
+            row.innerHTML = '<span style="flex:1;">' + CY.escapeHtml(text) + '</span><button class="cy-icon-btn" data-i="' + idx + '">🗑️</button>';
             body.appendChild(row);
         });
         body.querySelectorAll('button').forEach(btn => {
@@ -315,12 +309,12 @@
             }
         };
         document.getElementById('favClose').onclick = function () { panel.remove(); };
-        panel.onclick = function (e) { if (e.target === panel) panel.remove(); };
+        panel.onclick = function (event) { if (event.target === panel) panel.remove(); };
     }
 
     /* ========== 事件绑定 ========== */
-    document.getElementById('catRow').innerHTML = CATS.map((c, i) =>
-        '<span class="cy-tab' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' + c.name + '</span>'
+    document.getElementById('catRow').innerHTML = CATS.map((cat, idx) =>
+        '<span class="cy-tab' + (idx === 0 ? ' active' : '') + '" data-i="' + idx + '">' + cat.name + '</span>'
     ).join('');
 
     document.getElementById('catRow').querySelectorAll('.cy-tab').forEach(tab => {
@@ -342,25 +336,30 @@
     document.getElementById('btnCopy').onclick = function () {
         if (!cur) return;
         const cat = CATS[cur.catIdx];
-        const t = renderText(cat, cat.templates[cur.tplIdx], cur.picks);
-        navigator.clipboard.writeText(t).then(function () {
+        const text = renderText(cat, cat.templates[cur.tplIdx], cur.picks);
+        navigator.clipboard.writeText(text).then(function () {
             CY.showToast('已复制到剪贴板');
-            if (window.CY && CY.saveRecent) CY.saveRecent('cy_recent_ideas', t);
+            if (window.CY && CY.saveRecent) CY.saveRecent('cy_recent_ideas', text);
         }).catch(function () {});
     };
     document.getElementById('btnShowFav').onclick = showFav;
 
     /* 槽位点击：锁定切换 */
-    ideaBox.addEventListener('click', function (e) {
-        const chip = e.target.closest('.slot-chip');
+    ideaBox.addEventListener('click', function (event) {
+        const chip = event.target.closest('.slot-chip');
         if (!chip || !cur) return;
-        const k = chip.dataset.k;
-        cur.locks[k] = !cur.locks[k];
+        const slotKey = chip.dataset.k;
+        cur.locks[slotKey] = !cur.locks[slotKey];
         draw();
     });
 
-    newIdea();
-    updateFavCount();
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，newIdea() 里的 draw() 用 CY.escapeHtml 抛 ReferenceError，灵感卡片全空。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        newIdea();
+        updateFavCount();
+    });
     </script>
 </body>
 </html>

@@ -33,13 +33,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -144,31 +138,31 @@
 
     /* ---------- 模块 1：SCAMPER ---------- */
     var SCAMPER = [
-        { k: 'S', n: '替换 Substitute', p: ['什么东西可以被替换？换个材料/人/平台/场景？', '把某个组件换成更便宜的/更轻的/更耐用的？', '如果不花一分钱，用什么替代？'] },
-        { k: 'C', n: '组合 Combine', p: ['能和什么合并，产生 1+1>2？', '和另一个功能、品类、渠道组在一起？', '两种内容形式能不能融合成新的？'] },
-        { k: 'A', n: '改编 Adapt', p: ['别的领域已经解决过类似问题吗？直接借鉴过来？', '能不能把用在 A 场景的玩法搬到 B 场景？', '哪些成熟的模式可以「抄」得更聪明？'] },
-        { k: 'M', n: '放大 Modify', p: ['哪一部分放大 10 倍会怎样？体积/数量/频率/强度？', '如果把「别人会怎么看」完全抛掉，怎么改？', '放大哪个卖点，让用户一眼记住？'] },
-        { k: 'P', n: '用途 Put to other use', p: ['换个用户群体，它会变成什么？', '换个使用场景/时段/场合？', '它还能解决哪些「本来不是它的活」？'] },
-        { k: 'E', n: '消除 Eliminate', p: ['删掉哪个功能，反而更好用？', '哪些环节是惯性，其实可以不做？', '简化到只剩最核心的一步，是什么样？'] },
-        { k: 'R', n: '重排 Reverse', p: ['把流程顺序倒过来，会发生什么？', '把主次关系对调：配角变主角？', '把「用户先做 X」改成「系统先做 X」？'] }
+        { key: 'S', name: '替换 Substitute', prompts: ['什么东西可以被替换？换个材料/人/平台/场景？', '把某个组件换成更便宜的/更轻的/更耐用的？', '如果不花一分钱，用什么替代？'] },
+        { key: 'C', name: '组合 Combine', prompts: ['能和什么合并，产生 1+1>2？', '和另一个功能、品类、渠道组在一起？', '两种内容形式能不能融合成新的？'] },
+        { key: 'A', name: '改编 Adapt', prompts: ['别的领域已经解决过类似问题吗？直接借鉴过来？', '能不能把用在 A 场景的玩法搬到 B 场景？', '哪些成熟的模式可以「抄」得更聪明？'] },
+        { key: 'M', name: '放大 Modify', prompts: ['哪一部分放大 10 倍会怎样？体积/数量/频率/强度？', '如果把「别人会怎么看」完全抛掉，怎么改？', '放大哪个卖点，让用户一眼记住？'] },
+        { key: 'P', name: '用途 Put to other use', prompts: ['换个用户群体，它会变成什么？', '换个使用场景/时段/场合？', '它还能解决哪些「本来不是它的活」？'] },
+        { key: 'E', name: '消除 Eliminate', prompts: ['删掉哪个功能，反而更好用？', '哪些环节是惯性，其实可以不做？', '简化到只剩最核心的一步，是什么样？'] },
+        { key: 'R', name: '重排 Reverse', prompts: ['把流程顺序倒过来，会发生什么？', '把主次关系对调：配角变主角？', '把「用户先做 X」改成「系统先做 X」？'] }
     ];
     var scampIdx = 0;
-    var scampResults = []; // {k, n, text}
+    var scampResults = []; // {key, name, text}
 
     function renderScamper() {
         var row = document.getElementById('scamperRow');
         row.innerHTML = '';
-        SCAMPER.forEach(function (s, i) {
+        SCAMPER.forEach(function (item, index) {
             var it = document.createElement('div');
-            it.className = 'scamper-item' + (i === scampIdx ? ' active' : '');
-            it.innerHTML = '<div class="sc">' + s.k + '</div><div class="sn">' + s.n + '</div>';
-            it.onclick = function () { scampIdx = i; renderScamper(); };
+            it.className = 'scamper-item' + (index === scampIdx ? ' active' : '');
+            it.innerHTML = '<div class="sc">' + item.key + '</div><div class="sn">' + item.name + '</div>';
+            it.onclick = function () { scampIdx = index; renderScamper(); };
             row.appendChild(it);
         });
-        var s = SCAMPER[scampIdx];
+        var picked = SCAMPER[scampIdx];
         var prompts = document.getElementById('scamperPrompts');
-        prompts.innerHTML = '<b style="color:var(--zl-accent);">' + s.k + ' · ' + s.n + '</b><ul class="prompt-list">' +
-            s.p.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>';
+        prompts.innerHTML = '<b style="color:var(--zl-accent);">' + picked.key + ' · ' + picked.name + '</b><ul class="prompt-list">' +
+            picked.prompts.map(function (prompt) { return '<li>' + prompt + '</li>'; }).join('') + '</ul>';
         renderScamperResults();
     }
     function renderScamperResults() {
@@ -178,14 +172,14 @@
             box.innerHTML = '<span style="font-size:12px;color:var(--zl-dim);">尚未收集想法——每走一步点一次「📥 收集」。不少于 5 条再汇总，效果最好。</span>';
             return;
         }
-        scampResults.forEach(function (r, i) {
+        scampResults.forEach(function (entry, index) {
             var chip = document.createElement('span');
             chip.className = 'idea-chip';
-            chip.textContent = r.k + '. ' + r.text;
+            chip.textContent = entry.key + '. ' + entry.text;
             var del = document.createElement('span');
             del.style.cssText = 'cursor:pointer;margin-left:6px;color:#ef4444;';
             del.textContent = '✕';
-            del.onclick = function () { scampResults.splice(i, 1); renderScamperResults(); };
+            del.onclick = function () { scampResults.splice(index, 1); renderScamperResults(); };
             chip.appendChild(del);
             box.appendChild(chip);
         });
@@ -195,13 +189,13 @@
         if (!scampResults.length) { CY.showToast('先收集几条想法再汇总'); return; }
         var lines = ['# ' + subject + ' 改造清单', ''];
         var groups = {};
-        scampResults.forEach(function (r) {
-            if (!groups[r.k]) groups[r.k] = [];
-            groups[r.k].push(r.text);
+        scampResults.forEach(function (entry) {
+            if (!groups[entry.key]) groups[entry.key] = [];
+            groups[entry.key].push(entry.text);
         });
-        Object.keys(groups).forEach(function (k) {
-            lines.push('## ' + k + ' · ' + SCAMPER.find(function (s) { return s.k === k; }).n);
-            groups[k].forEach(function (t, i) { lines.push((i + 1) + '. ' + t); });
+        Object.keys(groups).forEach(function (letter) {
+            lines.push('## ' + letter + ' · ' + SCAMPER.find(function (item) { return item.key === letter; }).name);
+            groups[letter].forEach(function (idea, index) { lines.push((index + 1) + '. ' + idea); });
             lines.push('');
         });
         lines.push('---', '> 由创意引擎 SCAMPER 向导生成，' + new Date().toLocaleDateString());
@@ -223,12 +217,12 @@
 
     /* ---------- 模块 2：六顶思考帽 ---------- */
     var HATS = [
-        { c: '#ffffff', t: '⚪ 白帽 · 事实', d: '只看数据与已知信息：我们确定知道什么？还缺什么信息？', p: ['现状有哪些确凿的数据与事实？', '哪些信息还缺失，需要去查？', '抛开情绪与观点，客观陈述是什么样？'] },
-        { c: '#ef4444', t: '🔴 红帽 · 直觉', d: '只看感觉与直觉：高兴、担心、预感，不必论证。', p: ['此刻你的第一感觉是什么？', '直觉告诉你这事能不能成？', '哪种情绪在主导你，为什么重要？'] },
-        { c: '#1e1e1e', t: '⚫ 黑帽 · 风险', d: '只看风险与困难：哪里会出错？代价是什么？', p: ['最坏情况下会损失什么？', '哪些地方最容易出错？', '有什么隐患是别人没提的？'] },
-        { c: '#f6c945', t: '🟡 黄帽 · 价值', d: '只看收益与机会：往最好的方向想，它值得吗？', p: ['如果成功，收益上限是什么？', '有哪些被低估的机会？', '为什么这件事值得做？'] },
-        { c: '#16a34a', t: '🟢 绿帽 · 创意', d: '只看新可能：发散、替代、异想天开。', p: ['有没有完全不同的做法？', '如果预算翻倍/砍半，会怎么做？', '这件事还有哪些打开方式？'] },
-        { c: '#3b82f6', t: '🔵 蓝帽 · 掌控', d: '只看流程与结论：戴在所有人头上统筹全局。', p: ['当前讨论到哪一步了？', '各帽子已输出的关键结论是什么？', '下一步该做什么，谁来负责？'] }
+        { color: '#ffffff', title: '⚪ 白帽 · 事实', desc: '只看数据与已知信息：我们确定知道什么？还缺什么信息？', prompts: ['现状有哪些确凿的数据与事实？', '哪些信息还缺失，需要去查？', '抛开情绪与观点，客观陈述是什么样？'] },
+        { color: '#ef4444', title: '🔴 红帽 · 直觉', desc: '只看感觉与直觉：高兴、担心、预感，不必论证。', prompts: ['此刻你的第一感觉是什么？', '直觉告诉你这事能不能成？', '哪种情绪在主导你，为什么重要？'] },
+        { color: '#1e1e1e', title: '⚫ 黑帽 · 风险', desc: '只看风险与困难：哪里会出错？代价是什么？', prompts: ['最坏情况下会损失什么？', '哪些地方最容易出错？', '有什么隐患是别人没提的？'] },
+        { color: '#f6c945', title: '🟡 黄帽 · 价值', desc: '只看收益与机会：往最好的方向想，它值得吗？', prompts: ['如果成功，收益上限是什么？', '有哪些被低估的机会？', '为什么这件事值得做？'] },
+        { color: '#16a34a', title: '🟢 绿帽 · 创意', desc: '只看新可能：发散、替代、异想天开。', prompts: ['有没有完全不同的做法？', '如果预算翻倍/砍半，会怎么做？', '这件事还有哪些打开方式？'] },
+        { color: '#3b82f6', title: '🔵 蓝帽 · 掌控', desc: '只看流程与结论：戴在所有人头上统筹全局。', prompts: ['当前讨论到哪一步了？', '各帽子已输出的关键结论是什么？', '下一步该做什么，谁来负责？'] }
     ];
     var hatIdx = 0;
     var hatLog = []; // {hat, text, at}
@@ -236,47 +230,47 @@
     function renderHat() {
         var row = document.getElementById('hatRow');
         row.innerHTML = '';
-        HATS.forEach(function (h, i) {
+        HATS.forEach(function (hat, index) {
             var it = document.createElement('div');
-            it.className = 'hat-item' + (i === hatIdx ? ' active' : '');
-            it.style.background = h.c;
-            it.innerHTML = '<div class="ht">' + h.t + '</div><div class="hd">' + h.d + '</div>';
-            it.onclick = function () { hatIdx = i; renderHat(); };
+            it.className = 'hat-item' + (index === hatIdx ? ' active' : '');
+            it.style.background = hat.color;
+            it.innerHTML = '<div class="ht">' + hat.title + '</div><div class="hd">' + hat.desc + '</div>';
+            it.onclick = function () { hatIdx = index; renderHat(); };
             row.appendChild(it);
         });
-        var h = HATS[hatIdx];
-        document.getElementById('hatPrompt').innerHTML = '<ul class="prompt-list">' + h.p.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>';
-        document.getElementById('hatWrite').placeholder = '按「' + h.t + '」的视角，写下你的看法……';
+        var active = HATS[hatIdx];
+        document.getElementById('hatPrompt').innerHTML = '<ul class="prompt-list">' + active.prompts.map(function (prompt) { return '<li>' + prompt + '</li>'; }).join('') + '</ul>';
+        document.getElementById('hatWrite').placeholder = '按「' + active.title + '」的视角，写下你的看法……';
         renderHatLog();
     }
     function renderHatLog() {
         var box = document.getElementById('hatLog');
         if (!hatLog.length) { box.innerHTML = ''; return; }
         box.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--zl-accent);margin-bottom:4px;">本轮帽子记录</div>';
-        hatLog.forEach(function (r) {
-            var d = document.createElement('div');
-            d.style.cssText = 'font-size:13px;color:var(--zl-text);padding:6px 0;border-bottom:1px solid var(--zl-border);line-height:1.7;';
-            d.innerHTML = '<b style="color:var(--zl-dim);">' + r.hat + '：</b>' + escapeHtml(r.text);
-            box.appendChild(d);
+        hatLog.forEach(function (entry) {
+            var entryEl = document.createElement('div');
+            entryEl.style.cssText = 'font-size:13px;color:var(--zl-text);padding:6px 0;border-bottom:1px solid var(--zl-border);line-height:1.7;';
+            entryEl.innerHTML = '<b style="color:var(--zl-dim);">' + entry.hat + '：</b>' + escapeHtml(entry.text);
+            box.appendChild(entryEl);
         });
     }
     function nextHat() {
-        var h = HATS[hatIdx];
+        var current = HATS[hatIdx];
         var text = document.getElementById('hatWrite').value.trim();
-        if (text) hatLog.push({ hat: h.t, text: text, at: Date.now() });
+        if (text) hatLog.push({ hat: current.title, text: text, at: Date.now() });
         hatIdx = (hatIdx + 1) % HATS.length;
         document.getElementById('hatWrite').value = '';
         renderHat();
         if (hatIdx === 0 && hatLog.length >= 6) CY.unlock('method_first');
         if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'method_hat', page: '11.html' });
-        CY.showToast('🎩 已换到：' + HATS[hatIdx].t.split(' ·')[1]);
+        CY.showToast('🎩 已换到：' + HATS[hatIdx].title.split(' ·')[1]);
     }
     function viewHatLog() {
         renderHatLog();
         if (!hatLog.length) CY.showToast('还没记录——每戴一顶帽子写两句');
     }
-    function escapeHtml(s) {
-        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+    function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"]/g, function (char) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]; });
     }
 
     /* ---------- 模块 3：创作原则 ---------- */
@@ -320,10 +314,10 @@
     function renderPrinciples() {
         var box = document.getElementById('principlesBox');
         var html = '';
-        PRINCIPLES.forEach(function (g) {
-            html += '<div class="principle-group"><div class="pg">『' + g[0] + '』</div>';
-            g[1].forEach(function (p, i) {
-                html += '<div class="rule-item" style="margin-top:8px;padding:9px 12px;"><div class="rt" style="font-weight:600;">' + (i + 1) + '.</div><div class="rd" style="margin-top:2px;">' + p + '</div></div>';
+        PRINCIPLES.forEach(function (group) {
+            html += '<div class="principle-group"><div class="pg">『' + group[0] + '』</div>';
+            group[1].forEach(function (principle, index) {
+                html += '<div class="rule-item" style="margin-top:8px;padding:9px 12px;"><div class="rt" style="font-weight:600;">' + (index + 1) + '.</div><div class="rd" style="margin-top:2px;">' + principle + '</div></div>';
             });
             html += '</div>';
         });
@@ -331,20 +325,20 @@
     }
 
     /* ---------- Tab 切换 ---------- */
-    function setTab(t) {
-        tab = t;
-        document.querySelectorAll('#tabRow .cy-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.t === t); });
-        document.querySelectorAll('.module').forEach(function (m) { m.style.display = m.id === 'mod-' + t ? '' : 'none'; });
+    function setTab(targetTab) {
+        tab = targetTab;
+        document.querySelectorAll('#tabRow .cy-tab').forEach(function (tabBtn) { tabBtn.classList.toggle('active', tabBtn.dataset.t === targetTab); });
+        document.querySelectorAll('.module').forEach(function (moduleEl) { moduleEl.style.display = moduleEl.id === 'mod-' + targetTab ? '' : 'none'; });
     }
 
     /* ---------- 事件绑定与初始化 ---------- */
-    document.querySelectorAll('#tabRow .cy-tab').forEach(function (b) {
-        b.onclick = function () { setTab(this.dataset.t); };
+    document.querySelectorAll('#tabRow .cy-tab').forEach(function (tabBtn) {
+        tabBtn.onclick = function () { setTab(this.dataset.t); };
     });
     document.getElementById('btnScamperCollect').onclick = function () {
         var text = document.getElementById('scamperWrite').value.trim();
         if (!text) { CY.showToast('先在文本框里写点想法'); return; }
-        scampResults.push({ k: SCAMPER[scampIdx].k, n: SCAMPER[scampIdx].n, text: text });
+        scampResults.push({ key: SCAMPER[scampIdx].key, name: SCAMPER[scampIdx].name, text: text });
         document.getElementById('scamperWrite').value = '';
         renderScamperResults();
         CY.showToast('📥 已收集（' + scampResults.length + ' 条）');
@@ -367,11 +361,16 @@
         CY.showToast('🔄 轮转已重置');
     };
 
-    renderScamper();
-    renderHat();
-    renderPrinciples();
-    setTab('storm');
-    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '11.html' });
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，最后一行 typeof CY.activity 抛 ReferenceError，open_tool 活动记录静默丢失。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        renderScamper();
+        renderHat();
+        renderPrinciples();
+        setTab('storm');
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '11.html' });
+    });
     </script>
 </body>
 </html>

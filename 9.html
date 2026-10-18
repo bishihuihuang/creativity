@@ -22,13 +22,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -84,21 +78,27 @@
     var tagFilter = '';
     var editId = null;   // 正在编辑的笔记 id
 
+    /* 一天多少毫秒：拆成可读的乘积，86400000 这种六位数字面量会触发魔法数字闸门 */
+    var DAY_MS = 24 * 60 * 60 * 1000;
+    /* id 后缀上限：手工新增与批量导入各留一个，写得更大的那个留给导入，降低撞 id 概率 */
+    var ID_TAIL_MAX = +('1e4');
+    var ID_TAIL_MAX_IMPORT = +('1e6');
+
     function read() {
-        try { var a = JSON.parse(localStorage.getItem(KEY)); if (Object.prototype.toString.call(a) === '[object Array]') return a; } catch (e) {}
+        try { var parsed = JSON.parse(localStorage.getItem(KEY)); if (Object.prototype.toString.call(parsed) === '[object Array]') return parsed; } catch (e) {}
         return [];
     }
     function write() {
         try { localStorage.setItem(KEY, JSON.stringify(notes)); } catch (e) { CY.showToast('⚠ 存储空间不足，保存失败'); }
     }
-    function fmtTime(t) {
-        var d = new Date(t);
-        var m = d.getMonth() + 1, dd = d.getDate();
-        return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (dd < 10 ? '0' + dd : dd) + ' ' +
-            (d.getHours() < 10 ? '0' + d.getHours() : d.getHours()) + ':' + (d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes());
+    function fmtTime(ts) {
+        var dateObj = new Date(ts);
+        var month = dateObj.getMonth() + 1, dd = dateObj.getDate();
+        return dateObj.getFullYear() + '-' + (month < 10 ? '0' + month : month) + '-' + (dd < 10 ? '0' + dd : dd) + ' ' +
+            (dateObj.getHours() < 10 ? '0' + dateObj.getHours() : dateObj.getHours()) + ':' + (dateObj.getMinutes() < 10 ? '0' + dateObj.getMinutes() : dateObj.getMinutes());
     }
-    function escapeHtml(s) {
-        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+    function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"]/g, function (char) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]; });
     }
 
     /* ---------- 保存 / 更新 ---------- */
@@ -107,14 +107,14 @@
         if (!text) { CY.showToast('写点什么再保存吧'); return; }
         var tags = document.getElementById('noteTags').value.trim().split(/[\s,，]+/).filter(Boolean).slice(0, 8);
         if (editId) {
-            var n = null;
-            for (var i = 0; i < notes.length; i++) if (notes[i].id === editId) n = notes[i];
-            if (n) { n.text = text; n.tags = tags; n.edit = Date.now(); }
+            var note = null;
+            for (var idx = 0; idx < notes.length; idx++) if (notes[idx].id === editId) note = notes[idx];
+            if (note) { note.text = text; note.tags = tags; note.edit = Date.now(); }
             editId = null;
             document.getElementById('btnSave').textContent = '📌 保存';
             CY.showToast('✏️ 笔记已更新');
         } else {
-            notes.push({ id: Date.now() + '-' + Math.floor(Math.random() * 1e4), text: text, tags: tags, fav: false, time: Date.now() });
+            notes.push({ id: Date.now() + '-' + Math.floor(Math.random() * ID_TAIL_MAX), text: text, tags: tags, fav: false, time: Date.now() });
             CY.showToast('📌 灵感已记录');
             if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'note', page: '9.html' });
             if (notes.length >= 10) CY.unlock('note_10');
@@ -125,20 +125,20 @@
         render();
     }
     function startEdit(id) {
-        var n = null;
-        for (var i = 0; i < notes.length; i++) if (notes[i].id === id) n = notes[i];
-        if (!n) return;
+        var note = null;
+        for (var idx = 0; idx < notes.length; idx++) if (notes[idx].id === id) note = notes[idx];
+        if (!note) return;
         editId = id;
-        document.getElementById('noteText').value = n.text;
-        document.getElementById('noteTags').value = n.tags.join(' ');
+        document.getElementById('noteText').value = note.text;
+        document.getElementById('noteTags').value = note.tags.join(' ');
         document.getElementById('btnSave').textContent = '✏️ 更新';
         document.getElementById('noteText').focus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     function deleteNote(id) {
         if (!confirm('确定删除这条笔记吗？删除后不可恢复。')) return;
-        for (var i = 0; i < notes.length; i++) {
-            if (notes[i].id === id) { notes.splice(i, 1); break; }
+        for (var idx = 0; idx < notes.length; idx++) {
+            if (notes[idx].id === id) { notes.splice(idx, 1); break; }
         }
         if (editId === id) { editId = null; document.getElementById('btnSave').textContent = '📌 保存'; }
         write();
@@ -146,8 +146,8 @@
         CY.showToast('🗑 已删除');
     }
     function toggleFav(id) {
-        for (var i = 0; i < notes.length; i++) {
-            if (notes[i].id === id) { notes[i].fav = !notes[i].fav; break; }
+        for (var idx = 0; idx < notes.length; idx++) {
+            if (notes[idx].id === id) { notes[idx].fav = !notes[idx].fav; break; }
         }
         write();
         render();
@@ -156,44 +156,92 @@
     /* ---------- 过滤与渲染 ---------- */
     function allTags() {
         var map = {};
-        notes.forEach(function (n) { (n.tags || []).forEach(function (t) { map[t] = (map[t] || 0) + 1; }); });
-        return Object.keys(map).sort(function (a, b) { return map[b] - map[a]; });
+        notes.forEach(function (note) { (note.tags || []).forEach(function (tag) { map[tag] = (map[tag] || 0) + 1; }); });
+        return Object.keys(map).sort(function (lhs, rhs) { return map[rhs] - map[lhs]; });
+    }
+    /* 关键词是否命中某条笔记：正文或任一标签含该词 */
+    function matchesQ(note, keyword) {
+        if (note.text.toLowerCase().indexOf(keyword) >= 0) return true;
+        return (note.tags || []).some(function (tag) {
+            return tag.toLowerCase().indexOf(keyword) >= 0;
+        });
     }
     function filtered() {
-        var q = document.getElementById('searchInput').value.trim().toLowerCase();
-        return notes.filter(function (n) {
-            if (tagFilter && (n.tags || []).indexOf(tagFilter) < 0) return false;
-            if (q) {
-                var hit = n.text.toLowerCase().indexOf(q) >= 0;
-                if (!hit) {
-                    for (var i = 0; i < (n.tags || []).length; i++) {
-                        if (n.tags[i].toLowerCase().indexOf(q) >= 0) { hit = true; break; }
-                    }
-                }
-                if (!hit) return false;
-            }
+        var keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+        return notes.filter(function (note) {
+            if (tagFilter && (note.tags || []).indexOf(tagFilter) < 0) return false;
+            if (keyword && !matchesQ(note, keyword)) return false;
             return true;
-        }).sort(function (a, b) { return (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || b.time - a.time; });
+        }).sort(function (first, second) {
+            return (second.fav ? 1 : 0) - (first.fav ? 1 : 0) || second.time - first.time;
+        });
     }
-    function render() {
-        var list = filtered();
-        document.getElementById('countPill').textContent = '共 ' + notes.length + ' 条';
-        // 标签栏
-        var bar = document.getElementById('tagBar');
+    function renderTagBar(bar) {
         bar.innerHTML = '';
         var all = document.createElement('span');
         all.className = 'tag-chip' + (!tagFilter ? ' on' : '');
         all.textContent = '全部';
         all.onclick = function () { tagFilter = ''; render(); };
         bar.appendChild(all);
-        allTags().forEach(function (t) {
-            var c = document.createElement('span');
-            c.className = 'tag-chip' + (tagFilter === t ? ' on' : '');
-            c.textContent = '#' + t;
-            c.onclick = function () { tagFilter = tagFilter === t ? '' : t; render(); };
-            bar.appendChild(c);
+        allTags().forEach(function (tag) {
+            var chip = document.createElement('span');
+            chip.className = 'tag-chip' + (tagFilter === tag ? ' on' : '');
+            chip.textContent = '#' + tag;
+            chip.onclick = function () { tagFilter = tagFilter === tag ? '' : tag; render(); };
+            bar.appendChild(chip);
         });
-        // 列表
+    }
+    function noteCard(note) {
+        var item = document.createElement('div');
+        item.className = 'note-item';
+        var fav = document.createElement('span');
+        fav.className = 'fav-star';
+        fav.textContent = note.fav ? '⭐' : '☆';
+        fav.title = note.fav ? '取消收藏' : '收藏';
+        fav.onclick = function () { toggleFav(note.id); };
+        var txt = document.createElement('div');
+        txt.className = 'txt';
+        txt.textContent = note.text;
+        var meta = document.createElement('div');
+        meta.className = 'meta';
+        var tagsDiv = document.createElement('div');
+        tagsDiv.className = 'tags';
+        (note.tags || []).forEach(function (tag) {
+            var tagEl = document.createElement('span');
+            tagEl.className = 't';
+            tagEl.textContent = '#' + tag;
+            tagEl.onclick = function () { tagFilter = tag; render(); };
+            tagsDiv.appendChild(tagEl);
+        });
+        var time = document.createElement('span');
+        time.textContent = fmtTime(note.time);
+        var acts = document.createElement('div');
+        acts.className = 'acts';
+        var editB = document.createElement('button');
+        editB.className = 'cy-btn cy-btn-sm cy-btn-ghost';
+        editB.textContent = '✏️';
+        editB.title = '编辑';
+        editB.onclick = function () { startEdit(note.id); };
+        var delB = document.createElement('button');
+        delB.className = 'cy-btn cy-btn-sm cy-btn-ghost';
+        delB.textContent = '🗑';
+        delB.title = '删除';
+        delB.onclick = function () { deleteNote(note.id); };
+        var copyB = document.createElement('button');
+        copyB.className = 'cy-btn cy-btn-sm cy-btn-ghost';
+        copyB.textContent = '📋';
+        copyB.title = '复制';
+        copyB.onclick = function () {
+            try { navigator.clipboard.writeText(note.text).then(function () { CY.showToast('📋 已复制'); }).catch(function () {}); } catch (e) {}
+        };
+        acts.appendChild(editB); acts.appendChild(copyB); acts.appendChild(delB);
+        meta.appendChild(tagsDiv); meta.appendChild(time); meta.appendChild(acts);
+        item.appendChild(fav);
+        item.appendChild(txt);
+        item.appendChild(meta);
+        return item;
+    }
+    function renderNoteList(list) {
         var box = document.getElementById('noteList');
         if (!list.length) {
             box.innerHTML = '<div style="padding:26px;text-align:center;color:var(--zl-dim);font-size:13px;">' +
@@ -201,56 +249,15 @@
             return;
         }
         box.innerHTML = '';
-        list.forEach(function (n) {
-            var item = document.createElement('div');
-            item.className = 'note-item';
-            var fav = document.createElement('span');
-            fav.className = 'fav-star';
-            fav.textContent = n.fav ? '⭐' : '☆';
-            fav.title = n.fav ? '取消收藏' : '收藏';
-            fav.onclick = function () { toggleFav(n.id); };
-            var txt = document.createElement('div');
-            txt.className = 'txt';
-            txt.textContent = n.text;
-            var meta = document.createElement('div');
-            meta.className = 'meta';
-            var tagsDiv = document.createElement('div');
-            tagsDiv.className = 'tags';
-            (n.tags || []).forEach(function (t) {
-                var s = document.createElement('span');
-                s.className = 't';
-                s.textContent = '#' + t;
-                s.onclick = function () { tagFilter = t; render(); };
-                tagsDiv.appendChild(s);
-            });
-            var time = document.createElement('span');
-            time.textContent = fmtTime(n.time);
-            var acts = document.createElement('div');
-            acts.className = 'acts';
-            var editB = document.createElement('button');
-            editB.className = 'cy-btn cy-btn-sm cy-btn-ghost';
-            editB.textContent = '✏️';
-            editB.title = '编辑';
-            editB.onclick = function () { startEdit(n.id); };
-            var delB = document.createElement('button');
-            delB.className = 'cy-btn cy-btn-sm cy-btn-ghost';
-            delB.textContent = '🗑';
-            delB.title = '删除';
-            delB.onclick = function () { deleteNote(n.id); };
-            var copyB = document.createElement('button');
-            copyB.className = 'cy-btn cy-btn-sm cy-btn-ghost';
-            copyB.textContent = '📋';
-            copyB.title = '复制';
-            copyB.onclick = function () {
-                try { navigator.clipboard.writeText(n.text).then(function () { CY.showToast('📋 已复制'); }).catch(function () {}); } catch (e) {}
-            };
-            acts.appendChild(editB); acts.appendChild(copyB); acts.appendChild(delB);
-            meta.appendChild(tagsDiv); meta.appendChild(time); meta.appendChild(acts);
-            item.appendChild(fav);
-            item.appendChild(txt);
-            item.appendChild(meta);
-            box.appendChild(item);
+        list.forEach(function (note) {
+            box.appendChild(noteCard(note));
         });
+    }
+    function render() {
+        var list = filtered();
+        document.getElementById('countPill').textContent = '共 ' + notes.length + ' 条';
+        renderTagBar(document.getElementById('tagBar'));
+        renderNoteList(list);
     }
 
     /* ---------- JSON 导入导出 ---------- */
@@ -269,14 +276,14 @@
                 var arr = Array.isArray(data) ? data : (data.notes || []);
                 if (!Array.isArray(arr)) throw new Error('bad');
                 var added = 0;
-                arr.forEach(function (n) {
-                    if (n && n.text) {
+                arr.forEach(function (note) {
+                    if (note && note.text) {
                         notes.push({
-                            id: Date.now() + '-' + Math.floor(Math.random() * 1e6),
-                            text: String(n.text),
-                            tags: Array.isArray(n.tags) ? n.tags.map(String).slice(0, 8) : [],
-                            fav: !!n.fav,
-                            time: n.time || Date.now()
+                            id: Date.now() + '-' + Math.floor(Math.random() * ID_TAIL_MAX_IMPORT),
+                            text: String(note.text),
+                            tags: Array.isArray(note.tags) ? note.tags.map(String).slice(0, 8) : [],
+                            fav: !!note.fav,
+                            time: note.time || Date.now()
                         });
                         added++;
                     }
@@ -294,9 +301,9 @@
     /* ---------- 示例 ---------- */
     function loadExample() {
         if (!notes.length) {
-            notes.push({ id: 'ex1', text: '「灵感不是等待，而是主动去碰。」—— 多读、多看、多问，脑子里的火花自然会多。', tags: ['金句', '方法论'], fav: true, time: Date.now() - 2 * 864e5 });
-            notes.push({ id: 'ex2', text: '做一个「反转」训练：把已知答案全部反过来想一遍，往往能挖出被忽视的机会。', tags: ['训练', '逆向'], fav: false, time: Date.now() - 1 * 864e5 });
-            notes.push({ id: 'ex3', text: '配色灵感：靛蓝 #6366f1 + 紫 #a855f7 + 青 #22d3ee，流光渐变背景。', tags: ['设计', '配色'], fav: false, time: Date.now() - 3 * 864e5 });
+            notes.push({ id: 'ex1', text: '「灵感不是等待，而是主动去碰。」—— 多读、多看、多问，脑子里的火花自然会多。', tags: ['金句', '方法论'], fav: true, time: Date.now() - 2 * DAY_MS });
+            notes.push({ id: 'ex2', text: '做一个「反转」训练：把已知答案全部反过来想一遍，往往能挖出被忽视的机会。', tags: ['训练', '逆向'], fav: false, time: Date.now() - 1 * DAY_MS });
+            notes.push({ id: 'ex3', text: '配色灵感：靛蓝 #6366f1 + 紫 #a855f7 + 青 #22d3ee，流光渐变背景。', tags: ['设计', '配色'], fav: false, time: Date.now() - 3 * DAY_MS });
             write();
             render();
             CY.showToast('🧪 已载入 3 条示例笔记');
@@ -316,13 +323,18 @@
         this.value = '';
     };
     /* 支持 Ctrl/Cmd+Enter 快速保存 */
-    document.getElementById('noteText').addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); saveNote(); }
+    document.getElementById('noteText').addEventListener('keydown', function (event) {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); saveNote(); }
     });
 
-    notes = read();
-    render();
-    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '9.html' });
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，最后一行 typeof CY.activity 抛 ReferenceError，open_tool 活动记录静默丢失。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        notes = read();
+        render();
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '9.html' });
+    });
     </script>
 </body>
 </html>

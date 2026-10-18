@@ -20,6 +20,7 @@ const PRECACHE = [
   'verify.html',
   'common.css',
   'common.js',
+  'theme-init.js',
   'theme.js',
   'cy-features.js',
   'manifest.json',
@@ -37,7 +38,7 @@ const PRECACHE = [
 self.addEventListener('install', function (event) {
     event.waitUntil(
         caches.open(CACHE_NAME).then(function (cache) {
-            return cache.addAll(PRECACHE).catch(function (e) {});
+            return cache.addAll(PRECACHE).catch(function (err) {});
         }).then(function () { return self.skipWaiting(); })
     );
 });
@@ -45,8 +46,8 @@ self.addEventListener('install', function (event) {
 self.addEventListener('activate', function (event) {
     event.waitUntil(
         caches.keys().then(function (keys) {
-            return Promise.all(keys.map(function (k) {
-                if (k !== CACHE_NAME) return caches.delete(k);
+            return Promise.all(keys.map(function (cacheName) {
+                if (cacheName !== CACHE_NAME) return caches.delete(cacheName);
             }));
         }).then(function () { return self.clients.claim(); })
     );
@@ -65,7 +66,7 @@ self.addEventListener('fetch', function (event) {
                 var upd = fetch(req).then(function (res) {
                     if (res && res.ok) {
                         var copy = res.clone();
-                        caches.open(CACHE_NAME).then(function (c) { c.put(req, copy); });
+                        caches.open(CACHE_NAME).then(function (cacheHandle) { cacheHandle.put(req, copy); });
                     }
                     return res;
                 }).catch(function () { return null; });
@@ -75,7 +76,7 @@ self.addEventListener('fetch', function (event) {
             return fetch(req).then(function (res) {
                 if (res && res.ok && res.type === 'basic') {
                     var copy = res.clone();
-                    caches.open(CACHE_NAME).then(function (c) { c.put(req, copy); });
+                    caches.open(CACHE_NAME).then(function (cacheHandle) { cacheHandle.put(req, copy); });
                 }
                 return res;
             }).catch(function () {

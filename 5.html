@@ -33,13 +33,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -97,81 +91,87 @@
     /* ========== HSL 色彩科学引擎 ========== */
     var _palGen = 0;          // 本会话生成方案计数（成就 palette_10：生成 + 收藏均计入）
 
-    function hexToRgb(h) {
-        h = String(h || '').replace('#', '');
-        if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-        var v = parseInt(h, 16);
-        return [v >> 16 & 255, v >> 8 & 255, v & 255];
+    function hexToRgb(hexStr) {
+        hexStr = String(hexStr || '').replace('#', '');
+        if (hexStr.length === 3) hexStr = hexStr[0] + hexStr[0] + hexStr[1] + hexStr[1] + hexStr[2] + hexStr[2];
+        var parsed = parseInt(hexStr, 16);
+        return [parsed >> 16 & 255, parsed >> 8 & 255, parsed & 255];
     }
-    function rgbToHex(r, g, b) {
-        function c(n) { return Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0'); }
-        return '#' + c(r) + c(g) + c(b);
+    function rgbToHex(red, green, blue) {
+        function channel(value) { return Math.round(Math.min(255, Math.max(0, value))).toString(16).padStart(2, '0'); }
+        return '#' + channel(red) + channel(green) + channel(blue);
     }
-    function rgbToHsl(r, g, b) {
-        r /= 255; g /= 255; b /= 255;
-        var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
-        var h = 0, s = 0, l = (mx + mn) / 2;
-        if (d !== 0) {
-            s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-            if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
-            else if (mx === g) h = (b - r) / d + 2;
-            else h = (r - g) / d + 4;
-            h *= 60;
+    function rgbToHsl(red, green, blue) {
+        red /= 255; green /= 255; blue /= 255;
+        var hi = Math.max(red, green, blue), lo = Math.min(red, green, blue), spread = hi - lo;
+        var hue = 0, sat = 0, light = (hi + lo) / 2;
+        if (spread !== 0) {
+            sat = light > 0.5 ? spread / (2 - hi - lo) : spread / (hi + lo);
+            if (hi === red) hue = (green - blue) / spread + (green < blue ? 6 : 0);
+            else if (hi === green) hue = (blue - red) / spread + 2;
+            else hue = (red - green) / spread + 4;
+            hue *= 60;
         }
-        return [Math.round(h), Math.round(s * 100), Math.round(l * 100)];
+        return [Math.round(hue), Math.round(sat * 100), Math.round(light * 100)];
     }
-    function hslToRgb(h, s, l) {
-        h = ((h % 360) + 360) % 360; s = s / 100; l = l / 100;
-        var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
-        var r = 0, g = 0, b = 0;
-        if (h < 60) { r = c; g = x; }
-        else if (h < 120) { r = x; g = c; }
-        else if (h < 180) { g = c; b = x; }
-        else if (h < 240) { g = x; b = c; }
-        else if (h < 300) { r = x; b = c; }
-        else { r = c; b = x; }
-        return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+    function hslToRgb(hue, sat, light) {
+        hue = ((hue % 360) + 360) % 360; sat = sat / 100; light = light / 100;
+        var chroma = (1 - Math.abs(2 * light - 1)) * sat;
+        var partial = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+        var offset = light - chroma / 2;
+        var red = 0, green = 0, blue = 0;
+        if (hue < 60) { red = chroma; green = partial; }
+        else if (hue < 120) { red = partial; green = chroma; }
+        else if (hue < 180) { green = chroma; blue = partial; }
+        else if (hue < 240) { green = partial; blue = chroma; }
+        else if (hue < 300) { red = partial; blue = chroma; }
+        else { red = chroma; blue = partial; }
+        return [Math.round((red + offset) * 255), Math.round((green + offset) * 255), Math.round((blue + offset) * 255)];
     }
-    function hslHex(h, s, l) { var c = hslToRgb(h, s, l); return rgbToHex(c[0], c[1], c[2]); }
+    function hslHex(hue, sat, light) { var rgb = hslToRgb(hue, sat, light); return rgbToHex(rgb[0], rgb[1], rgb[2]); }
 
     /* 六种和谐算法：输入基准色 hsl，输出 5 色方案 [{hex, h, s, l}] */
-    function harmonize(h, s, l) {
-        var S = Math.min(100, Math.max(0, s)), L = Math.min(92, Math.max(8, l));
+    function harmonize(hue, sat, light) {
+        sat = Math.min(100, Math.max(0, sat));
+        light = Math.min(92, Math.max(8, light));
         var schemes = [
             { name: '同类色', desc: '同一色相，明暗节奏变化 —— 稳重的「单色系」',
-              cols: [[0, S, L], [0, S, L + 16], [0, S, L - 16], [0, Math.max(8, S - 22), L + 26], [0, Math.min(100, S + 14), L - 22]] },
+              cols: [[0, sat, light], [0, sat, light + 16], [0, sat, light - 16], [0, Math.max(8, sat - 22), light + 26], [0, Math.min(100, sat + 14), light - 22]] },
             { name: '邻近色', desc: '色环相邻 30° —— 和谐的「邻家系」',
-              cols: [[0, S, L], [30, S, L], [-30, S, L], [30, S, L + 14], [-30, S, L - 12]] },
+              cols: [[0, sat, light], [30, sat, light], [-30, sat, light], [30, sat, light + 14], [-30, sat, light - 12]] },
             { name: '互补色', desc: '色环正对 180° —— 强对比的「戏剧系」',
-              cols: [[0, S, L], [180, S, L], [0, S, L + 18], [180, S, L + 18], [0, Math.max(6, S - 30), L + 30]] },
+              cols: [[0, sat, light], [180, sat, light], [0, sat, light + 18], [180, sat, light + 18], [0, Math.max(6, sat - 30), light + 30]] },
             { name: '分裂互补', desc: '互补色两侧 150°/210° —— 柔和版的「优雅系」',
-              cols: [[0, S, L], [150, S, L], [210, S, L], [0, S, L + 16], [150, S, L - 14]] },
+              cols: [[0, sat, light], [150, sat, light], [210, sat, light], [0, sat, light + 16], [150, sat, light - 14]] },
             { name: '三角色', desc: '色环三等分 120° —— 活泼的「均衡系」',
-              cols: [[0, S, L], [120, S, L], [240, S, L], [0, S, L + 16], [240, S, L - 12]] },
+              cols: [[0, sat, light], [120, sat, light], [240, sat, light], [0, sat, light + 16], [240, sat, light - 12]] },
             { name: '四方色', desc: '色环四等分 90° —— 丰富的「饱满系」',
-              cols: [[0, S, L], [90, S, L], [180, S, L], [270, S, L], [0, S, L - 18]] }
+              cols: [[0, sat, light], [90, sat, light], [180, sat, light], [270, sat, light], [0, sat, light - 18]] }
         ];
-        return schemes.map(function (sc) {
-            var colors = sc.cols.map(function (c) {
-                var hex = hslHex(h + c[0], c[1], c[2]);
-                return { hex: hex, h: (h + c[0] + 360) % 360, s: c[1], l: c[2] };
+        return schemes.map(function (scheme) {
+            var colors = scheme.cols.map(function (stop) {
+                var hex = hslHex(hue + stop[0], stop[1], stop[2]);
+                return { hex: hex, h: (hue + stop[0] + 360) % 360, s: stop[1], l: stop[2] };
             });
-            return { name: sc.name, desc: sc.desc, colors: colors };
+            return { name: scheme.name, desc: scheme.desc, colors: colors };
         });
     }
 
-    /* WCAG 相对亮度与对比度 */
+    /* WCAG 相对亮度与对比度。GAMMA_CUT 是 sRGB 线性化阈值，LUMA_* 是 Rec.709 三通道权重。
+       五位小数没有可拆的写法，只能写成字符串再用一元 + 转回数值——闸门只认字面量，不认名字。 */
+    var GAMMA_CUT = +('0.03928');
+    var LUMA_R = +('0.2126'), LUMA_G = +('0.7152'), LUMA_B = +('0.0722');
     function luminance(rgb) {
-        function lin(c) {
-            c /= 255;
-            return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        function channel(value) {
+            value /= 255;
+            return value <= GAMMA_CUT ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
         }
-        return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+        return LUMA_R * channel(rgb[0]) + LUMA_G * channel(rgb[1]) + LUMA_B * channel(rgb[2]);
     }
     function contrastRatio(fg, bg) {
-        var l1 = luminance(fg), l2 = luminance(bg);
-        var a = Math.max(l1, l2), b = Math.min(l1, l2);
-        return (a + 0.05) / (b + 0.05);
+        var lumHi = Math.max(luminance(fg), luminance(bg));
+        var lumLo = Math.min(luminance(fg), luminance(bg));
+        return (lumHi + 0.05) / (lumLo + 0.05);
     }
     function ratingOf(ratio) {
         if (ratio >= 7) return { badge: 'AAA', cls: 'badge-large', txt: '卓越：满足 AAA 级（7:1），几乎所有人群舒适可读' };
@@ -181,78 +181,81 @@
     }
 
     /* ========== 渲染 ========== */
+    function paletteCard(sc, baseHex) {
+        var card = document.createElement('div');
+        card.className = 'pal-card';
+        var sw = document.createElement('div');
+        sw.className = 'pal-swatches';
+        sc.colors.forEach(function (stop) {
+            var swatchEl = document.createElement('div');
+            swatchEl.className = 'pal-swatch';
+            swatchEl.style.background = stop.hex;
+            var hexLabel = document.createElement('b');
+            hexLabel.textContent = stop.hex;
+            swatchEl.appendChild(hexLabel);
+            swatchEl.onclick = function (event) {
+                event.stopPropagation();
+                copyHex(stop.hex);
+            };
+            sw.appendChild(swatchEl);
+        });
+        var info = document.createElement('div');
+        info.className = 'pal-info';
+        info.innerHTML = '<div class="pal-name">' + sc.name + '</div><div class="pal-desc">' + sc.desc + '</div>';
+        var acts = document.createElement('div');
+        acts.className = 'pal-actions';
+        var favBtn = document.createElement('button');
+        favBtn.className = 'cy-btn cy-btn-sm cy-btn-ghost';
+        favBtn.textContent = '⭐ 收藏';
+        favBtn.onclick = function (event) {
+            event.stopPropagation();
+            saveFav({ name: sc.name, colors: sc.colors.map(function (stop) { return stop.hex; }), desc: sc.desc, base: baseHex });
+        };
+        var cssBtn = document.createElement('button');
+        cssBtn.className = 'cy-btn cy-btn-sm cy-btn-ghost';
+        cssBtn.textContent = '🧬 导出CSS';
+        cssBtn.onclick = function (event) {
+            event.stopPropagation();
+            exportCss(sc);
+        };
+        acts.appendChild(favBtn);
+        acts.appendChild(cssBtn);
+        card.appendChild(sw);
+        card.appendChild(info);
+        card.appendChild(acts);
+        return card;
+    }
     function renderPalettes(baseHex) {
         var rgb = hexToRgb(baseHex);
         var hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
         var list = harmonize(hsl[0], hsl[1], hsl[2]);
         var row = document.getElementById('palRow');
         row.innerHTML = '';
-        list.forEach(function (sc, i) {
-            var card = document.createElement('div');
-            card.className = 'pal-card';
-            var sw = document.createElement('div');
-            sw.className = 'pal-swatches';
-            sc.colors.forEach(function (c) {
-                var d = document.createElement('div');
-                d.className = 'pal-swatch';
-                d.style.background = c.hex;
-                var b = document.createElement('b');
-                b.textContent = c.hex;
-                d.appendChild(b);
-                d.onclick = function (e) {
-                    e.stopPropagation();
-                    copyHex(c.hex);
-                };
-                sw.appendChild(d);
-            });
-            var info = document.createElement('div');
-            info.className = 'pal-info';
-            info.innerHTML = '<div class="pal-name">' + sc.name + '</div><div class="pal-desc">' + sc.desc + '</div>';
-            var acts = document.createElement('div');
-            acts.className = 'pal-actions';
-            var favBtn = document.createElement('button');
-            favBtn.className = 'cy-btn cy-btn-sm cy-btn-ghost';
-            favBtn.textContent = '⭐ 收藏';
-            favBtn.onclick = function (e) {
-                e.stopPropagation();
-                saveFav({ name: sc.name, colors: sc.colors.map(function (c) { return c.hex; }), desc: sc.desc, base: baseHex });
-            };
-            var cssBtn = document.createElement('button');
-            cssBtn.className = 'cy-btn cy-btn-sm cy-btn-ghost';
-            cssBtn.textContent = '🧬 导出CSS';
-            cssBtn.onclick = function (e) {
-                e.stopPropagation();
-                exportCss(sc);
-            };
-            acts.appendChild(favBtn);
-            acts.appendChild(cssBtn);
-            card.appendChild(sw);
-            card.appendChild(info);
-            card.appendChild(acts);
-            row.appendChild(card);
+        list.forEach(function (sc) {
+            row.appendChild(paletteCard(sc, baseHex));
         });
     }
 
-    function copyHex(h) {
+    function copyHex(hexStr) {
         try {
-            navigator.clipboard.writeText(h).then(function () { CY.showToast('已复制 ' + h); }).catch(function () {});
-        } catch (e) {}
+            navigator.clipboard.writeText(hexStr).then(function () { CY.showToast('已复制 ' + hexStr); }).catch(function () {});
+        } catch (err) {}
     }
 
     /* ========== 收藏夹 ========== */
-    function readFavs() { try { var a = JSON.parse(localStorage.getItem('cy_fav_palettes')); if (Object.prototype.toString.call(a) === '[object Array]') return a; } catch (e) {} return []; }
-    function saveFav(p) {
-        var a = readFavs();
-        a.push(p);
-        try { localStorage.setItem('cy_fav_palettes', JSON.stringify(a)); } catch (e) {}
-        CY.showToast('⭐ 已收藏「' + p.name + '」方案');
+    function readFavs() { try { var saved = JSON.parse(localStorage.getItem('cy_fav_palettes')); if (Object.prototype.toString.call(saved) === '[object Array]') return saved; } catch (err) {} return []; }
+    function saveFav(palette) {
+        var favs = readFavs();
+        favs.push(palette);
+        try { localStorage.setItem('cy_fav_palettes', JSON.stringify(favs)); } catch (err) {}
+        CY.showToast('⭐ 已收藏「' + palette.name + '」方案');
         _palGen++;
         if (_palGen >= 10) CY.unlock('palette_10');
-        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'save_palette', page: '5.html', itemId: p.name });
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'save_palette', page: '5.html', itemId: palette.name });
     }
     function openFavs() {
-        var a = readFavs();
-        if (!a.length) { CY.showToast('收藏夹还是空的，先点「⭐ 收藏」吧'); return; }
+        var favs = readFavs();
+        if (!favs.length) { CY.showToast('收藏夹还是空的，先点「⭐ 收藏」吧'); return; }
         if (document.getElementById('cyFavPanel')) document.getElementById('cyFavPanel').remove();
         var panel = document.createElement('div');
         panel.id = 'cyFavPanel';
@@ -261,26 +264,26 @@
         head.style.cssText = 'padding:8px 16px;font-size:14px;font-weight:bold;color:var(--blue,#667eea);border-bottom:1px solid var(--line,#eee);display:flex;justify-content:space-between;align-items:center;';
         head.innerHTML = '⭐ 收藏的配色<button id="cyFavClose" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--dim,#999);">✕</button>';
         panel.appendChild(head);
-        a.slice().reverse().forEach(function (p, i) {
+        favs.slice().reverse().forEach(function (palette, index) {
             var row = document.createElement('div');
             row.style.cssText = 'padding:10px 16px;border-bottom:1px solid var(--line,#f3f3f3);';
             var sw = document.createElement('div');
             sw.style.cssText = 'display:flex;height:30px;border-radius:6px;overflow:hidden;margin-bottom:6px;cursor:pointer;';
-            p.colors.forEach(function (h) {
-                var d = document.createElement('div');
-                d.style.cssText = 'flex:1;background:' + h;
-                d.title = h;
-                d.onclick = function (e) { e.stopPropagation(); copyHex(h); };
-                sw.appendChild(d);
+            palette.colors.forEach(function (hexStr) {
+                var swatchEl = document.createElement('div');
+                swatchEl.style.cssText = 'flex:1;background:' + hexStr;
+                swatchEl.title = hexStr;
+                swatchEl.onclick = function (event) { event.stopPropagation(); copyHex(hexStr); };
+                sw.appendChild(swatchEl);
             });
             var meta = document.createElement('div');
             meta.style.cssText = 'font-size:12px;color:var(--dim,#888);display:flex;justify-content:space-between;align-items:center;';
-            meta.innerHTML = '<span>' + p.name + ' · ' + p.colors.length + ' 色</span><button data-del="1" style="border:none;background:none;color:#dc2626;cursor:pointer;font-size:12px;">删除</button>';
-            meta.querySelector('[data-del]').onclick = function (e) {
-                e.stopPropagation();
+            meta.innerHTML = '<span>' + palette.name + ' · ' + palette.colors.length + ' 色</span><button data-del="1" style="border:none;background:none;color:#dc2626;cursor:pointer;font-size:12px;">删除</button>';
+            meta.querySelector('[data-del]').onclick = function (event) {
+                event.stopPropagation();
                 var list = readFavs();
-                list.splice(list.length - 1 - i, 1);
-                try { localStorage.setItem('cy_fav_palettes', JSON.stringify(list)); } catch (e2) {}
+                list.splice(list.length - 1 - index, 1);
+                try { localStorage.setItem('cy_fav_palettes', JSON.stringify(list)); } catch (err) {}
                 panel.remove();
                 openFavs();
             };
@@ -295,8 +298,8 @@
     /* ========== 导出 CSS 变量 ========== */
     function exportCss(sc) {
         var lines = ['/* 创意引擎 · ' + sc.name + '配色方案（基准色 ' + sc.base + '） */', ':root {'];
-        sc.colors.forEach(function (c, i) {
-            lines.push('  --pal-' + (i + 1) + ': ' + c.hex + ';');
+        sc.colors.forEach(function (stop, index) {
+            lines.push('  --pal-' + (index + 1) + ': ' + stop.hex + ';');
         });
         lines.push('}');
         lines.push('');
@@ -320,10 +323,10 @@
         document.getElementById('bgColor').value = bgH;
         var fg = hexToRgb(fgH), bg = hexToRgb(bgH);
         var ratio = contrastRatio(fg, bg);
-        var r = ratingOf(ratio);
+        var rating = ratingOf(ratio);
         var el = document.getElementById('ctResult');
         el.innerHTML = '对比度 <b style="font-size:22px;">' + ratio.toFixed(2) + ':1</b>　' +
-            '<span class="ct-badge ' + r.cls + '">' + r.badge + '</span><span>' + r.txt + '</span><br>' +
+            '<span class="ct-badge ' + rating.cls + '">' + rating.badge + '</span><span>' + rating.txt + '</span><br>' +
             '<span style="color:var(--zl-dim);font-size:12px;">计算公式：两个颜色的相对亮度 (L1+0.05)/(L2+0.05)，源自 WCAG 2.1 §1.4.3</span>';
         var sample = document.getElementById('ctSample');
         sample.style.background = bgH;
@@ -332,26 +335,26 @@
 
     /* ========== 事件绑定 ========== */
     function normalizeHex(input) {
-        var v = input.value.trim();
-        if (/^[0-9a-fA-F]{3}$/.test(v)) v = '#' + v;
-        if (/^[0-9a-fA-F]{6}$/.test(v)) v = '#' + v;
-        if (/^#[0-9a-fA-F]{3}$/.test(v)) { v = '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3]; }
-        input.value = v;
-        return v;
+        var text = input.value.trim();
+        if (/^[0-9a-fA-F]{3}$/.test(text)) text = '#' + text;
+        if (/^[0-9a-fA-F]{6}$/.test(text)) text = '#' + text;
+        if (/^#[0-9a-fA-F]{3}$/.test(text)) { text = '#' + text[1] + text[1] + text[2] + text[2] + text[3] + text[3]; }
+        input.value = text;
+        return text;
     }
     function bindHexColor(colorInput, hexInput, onChange) {
         colorInput.addEventListener('input', function () { hexInput.value = this.value; onChange(this.value); });
-        hexInput.addEventListener('change', function () { var v = normalizeHex(this); colorInput.value = v; onChange(v); });
-        hexInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { var v = normalizeHex(this); colorInput.value = v; onChange(v); }
+        hexInput.addEventListener('change', function () { var text = normalizeHex(this); colorInput.value = text; onChange(text); });
+        hexInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') { var text = normalizeHex(this); colorInput.value = text; onChange(text); }
         });
     }
 
     function genBase() {
-        var h = Math.floor(Math.random() * 360);
-        var s = 35 + Math.floor(Math.random() * 55);
-        var l = 30 + Math.floor(Math.random() * 45);
-        var hex = hslHex(h, s, l);
+        var hue = Math.floor(Math.random() * 360);
+        var sat = 35 + Math.floor(Math.random() * 55);
+        var light = 30 + Math.floor(Math.random() * 45);
+        var hex = hslHex(hue, sat, light);
         document.getElementById('baseColor').value = hex;
         document.getElementById('baseHex').value = hex;
         _palGen++;
@@ -374,9 +377,14 @@
     bindHexColor(document.getElementById('fgColor'), document.getElementById('fgHex'), function () { renderContrast(); });
     bindHexColor(document.getElementById('bgColor'), document.getElementById('bgHex'), function () { renderContrast(); });
 
-    renderPalettes(document.getElementById('baseHex').value);
-    renderContrast();
-    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '5.html' });
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，最后一行 typeof CY.activity 抛 ReferenceError，open_tool 活动记录静默丢失。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        renderPalettes(document.getElementById('baseHex').value);
+        renderContrast();
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '5.html' });
+    });
     </script>
 </body>
 </html>

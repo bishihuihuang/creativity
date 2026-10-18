@@ -20,13 +20,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -165,26 +159,26 @@
     function randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
     function renderTpl(tpl, slots) {
-        return tpl.replace(/\{(\w+)\}/g, function (_, k) {
-            const pool = slots[k];
-            if (!pool) return '【' + k + '】';
+        return tpl.replace(/\{(\w+)\}/g, function (_, slotKey) {
+            const pool = slots[slotKey];
+            if (!pool) return '【' + slotKey + '】';
             if (Array.isArray(pool)) return randItem(pool);
             return pool;
         });
     }
 
-    function gen(n) {
+    function gen(count) {
         const mode = MODES[modeIdx];
         const items = [];
-        for (let i = 0; i < n; i++) {
-            const tpl = randItem(mode.tpls);
-            const parts = tpl; // may contain a trailing tag like （类别）
-            items.push(renderTpl(tpl, mode.slots));
+        for (let idx = 0; idx < count; idx++) {
+            // 每条模板是「正文 + 可选分类标签」的数组，先拼回一句再填槽
+            const parts = randItem(mode.tpls);
+            items.push(renderTpl(parts.join(''), mode.slots));
         }
-        outList.insertAdjacentHTML('beforeend', items.map((t, i) =>
-            '<div class="line"><span class="txt">' + CY.escapeHtml(t) +
-            '</span><span class="ops"><button class="cy-icon-btn fav" data-t="' + CY.escapeHtml(t).replace(/"/g, '&quot;') + '" title="收藏">♥</button>' +
-            '<button class="cy-icon-btn" data-c="' + CY.escapeHtml(t).replace(/"/g, '&quot;') + '" title="复制">📋</button></span></div>'
+        outList.insertAdjacentHTML('beforeend', items.map((text, idx) =>
+            '<div class="line"><span class="txt">' + CY.escapeHtml(text) +
+            '</span><span class="ops"><button class="cy-icon-btn fav" data-t="' + CY.escapeHtml(text).replace(/"/g, '&quot;') + '" title="收藏">♥</button>' +
+            '<button class="cy-icon-btn" data-c="' + CY.escapeHtml(text).replace(/"/g, '&quot;') + '" title="复制">📋</button></span></div>'
         ).join(''));
         bindLineBtns();
         // 成就/记录
@@ -215,14 +209,15 @@
 
     function switchMode(i) {
         modeIdx = i;
-        document.getElementById('modeRow').querySelectorAll('.cy-tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('modeRow').children[i].classList.add('active');
+        const tabs = document.getElementById('modeRow').querySelectorAll('.cy-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        tabs[i].classList.add('active');
         document.getElementById('modeDesc').textContent = MODES[i].desc;
         outList.innerHTML = '';
     }
 
-    document.getElementById('modeRow').innerHTML = MODES.map((m, i) =>
-        '<span class="cy-tab' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' + m.name + '</span>'
+    document.getElementById('modeRow').innerHTML = MODES.map((mode, idx) =>
+        '<span class="cy-tab' + (idx === 0 ? ' active' : '') + '" data-i="' + idx + '">' + mode.name + '</span>'
     ).join('');
     document.getElementById('modeRow').querySelectorAll('.cy-tab').forEach(tab => {
         tab.onclick = function () { switchMode(parseInt(this.dataset.i)); };
@@ -239,8 +234,13 @@
         CY.showToast('已导出 ' + texts.length + ' 条');
     };
 
-    switchMode(0);
-    gen(6);
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，gen() 里 CY.escapeHtml 抛 ReferenceError，首屏 6 条文案全是空的。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        switchMode(0);
+        gen(6);
+    });
     </script>
 </body>
 </html>

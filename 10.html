@@ -26,13 +26,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -106,7 +100,7 @@
     };
 
     function readTotal() {
-        try { var v = parseInt(localStorage.getItem('cy_link_total') || '0', 10); return isNaN(v) ? 0 : v; } catch (e) { return 0; }
+        try { var storedValue = parseInt(localStorage.getItem('cy_link_total') || '0', 10); return isNaN(storedValue) ? 0 : storedValue; } catch (e) { return 0; }
     }
     function writeTotal(v) {
         try { localStorage.setItem('cy_link_total', String(v)); } catch (e) {}
@@ -116,8 +110,8 @@
         var list = DOMAINS[dom];
         var tries = 0;
         while (tries < 40) {
-            var w = list[Math.floor(Math.random() * list.length)];
-            if (!state.used[w]) { state.used[w] = 1; return w; }
+            var word = list[Math.floor(Math.random() * list.length)];
+            if (!state.used[word]) { state.used[word] = 1; return word; }
             tries++;
         }
         return list[Math.floor(Math.random() * list.length)];
@@ -128,7 +122,7 @@
         var keys = Object.keys(state.used);
         if (keys.length > 30) {
             var toDel = keys.length - 30;
-            for (var i = 0; i < toDel; i++) delete state.used[keys[i]];
+            for (var delIdx = 0; delIdx < toDel; delIdx++) delete state.used[keys[delIdx]];
         }
         var d1 = DOM_KEYS[Math.floor(Math.random() * DOM_KEYS.length)];
         var d2 = DOM_KEYS[Math.floor(Math.random() * DOM_KEYS.length)];
@@ -199,8 +193,8 @@
         br.textContent = bridge;
         var tm = document.createElement('span');
         tm.className = 'time';
-        var d = new Date();
-        tm.textContent = (d.getHours() < 10 ? '0' + d.getHours() : d.getHours()) + ':' + (d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes());
+        var nowDate = new Date();
+        tm.textContent = (nowDate.getHours() < 10 ? '0' + nowDate.getHours() : nowDate.getHours()) + ':' + (nowDate.getMinutes() < 10 ? '0' + nowDate.getMinutes() : nowDate.getMinutes());
         it.appendChild(pair); it.appendChild(br); it.appendChild(tm);
         box.insertBefore(it, box.firstChild);
     }
@@ -214,14 +208,19 @@
         clearInterval(state.timer);
         nextPair();
     };
-    document.getElementById('bridgeInput').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); connect(); }
+    document.getElementById('bridgeInput').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') { event.preventDefault(); connect(); }
     });
 
-    state.total = readTotal();
-    renderScore();
-    nextPair();
-    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '10.html' });
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，最后一行 typeof CY.activity 抛 ReferenceError，open_tool 活动记录静默丢失。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        state.total = readTotal();
+        renderScore();
+        nextPair();
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '10.html' });
+    });
     </script>
 </body>
 </html>

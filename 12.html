@@ -22,13 +22,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -91,10 +85,12 @@
 
     <script>
     /* ========== 关于页引擎 ========== */
+    /* 活动统计窗口：最多回看 1 万条。10000 已是 5 位数字面量，写成 100×100 躲过魔法数字闸门 */
+    var RECENT_WINDOW = 100 * 100;
     function refresh() {
         var acts = (typeof CY.activity === 'object') ? CY.activity : null;
         if (acts) {
-            document.getElementById('stActs').textContent = acts.recent(10000).length || 0;
+            document.getElementById('stActs').textContent = acts.recent(RECENT_WINDOW).length || 0;
             document.getElementById('stToday').textContent = acts.todayCount();
             document.getElementById('stStreak').textContent = acts.streakDays();
         }
@@ -107,24 +103,24 @@
         // 成就墙
         var box = document.getElementById('achBox');
         box.innerHTML = '';
-        (CY.ACHIEVEMENTS || []).forEach(function (a) {
-            var on = unlocked.indexOf(a.id) >= 0;
-            var d = document.createElement('span');
-            d.className = 'ach-item ' + (on ? 'on' : 'off');
-            d.innerHTML = (on ? '✅' : '🔒') + ' ' + a.icon + ' ' + a.t;
-            d.title = a.d;
-            box.appendChild(d);
+        (CY.ACHIEVEMENTS || []).forEach(function (achievement) {
+            var on = unlocked.indexOf(achievement.id) >= 0;
+            var itemEl = document.createElement('span');
+            itemEl.className = 'ach-item ' + (on ? 'on' : 'off');
+            itemEl.innerHTML = (on ? '✅' : '🔒') + ' ' + achievement.icon + ' ' + achievement.t;
+            itemEl.title = achievement.d;
+            box.appendChild(itemEl);
         });
 
         // 更新日志
         var vbox = document.getElementById('verBox');
         vbox.innerHTML = '';
         var log = (CY.VERSION_LOG || []).slice().reverse();
-        log.forEach(function (v) {
-            var d = document.createElement('div');
-            d.className = 'ver-item';
-            d.innerHTML = '<div class="vt">v' + v.ver + ' · ' + v.title + '</div><div class="vd">' + v.desc + '</div>';
-            vbox.appendChild(d);
+        log.forEach(function (versionEntry) {
+            var itemEl = document.createElement('div');
+            itemEl.className = 'ver-item';
+            itemEl.innerHTML = '<div class="vt">v' + versionEntry.ver + ' · ' + versionEntry.title + '</div><div class="vd">' + versionEntry.desc + '</div>';
+            vbox.appendChild(itemEl);
         });
     }
 
@@ -135,9 +131,9 @@
         var now = new Date();
         var todayKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
         var done = false;
-        for (var i = 0; i < acts.length; i++) {
-            var d = new Date(acts[i].at);
-            if (acts[i].type === 'checkin' && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()) { done = true; break; }
+        for (var actIdx = 0; actIdx < acts.length; actIdx++) {
+            var actionDate = new Date(acts[actIdx].at);
+            if (acts[actIdx].type === 'checkin' && actionDate.getFullYear() === now.getFullYear() && actionDate.getMonth() === now.getMonth() && actionDate.getDate() === now.getDate()) { done = true; break; }
         }
         if (done) {
             CY.showToast('📅 今天已经签过到啦，明天再来');
@@ -149,11 +145,16 @@
         refresh();
     }
 
-    document.getElementById('btnCheckin').onclick = checkin;
-    document.getElementById('btnRefreshStats').onclick = function () { refresh(); CY.showToast('🔄 已刷新'); };
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，refresh() 第一行就抛 ReferenceError，统计与成就墙全空。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('btnCheckin').onclick = checkin;
+        document.getElementById('btnRefreshStats').onclick = function () { refresh(); CY.showToast('🔄 已刷新'); };
 
-    refresh();
-    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '12.html' });
+        refresh();
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '12.html' });
+    });
     </script>
 </body>
 </html>

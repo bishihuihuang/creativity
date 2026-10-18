@@ -14,13 +14,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -95,24 +89,24 @@
         const STOP = '的了是在和有都就着也还又而或与及把被但虽然而若则且因故于此其为从对向位于以上中之内的外间以'.split('');
         const freq = {};
         const cjkStr = text.replace(/[^\u4e00-\u9fff]/g, '');
-        for (let i = 0; i < cjkStr.length - 1; i++) {
-            const big = cjkStr[i] + cjkStr[i + 1];
+        for (let idx = 0; idx < cjkStr.length - 1; idx++) {
+            const big = cjkStr[idx] + cjkStr[idx + 1];
             if (!['我们','你们','他们','她们','它们','这个','那个','这些','那些','自己','一个','一种','可以','没有','不是','已经','但是','因为','所以','如果','虽然','而且','并且','或者','只是','就是','还是','通过','对于','关于','由于','其中','以及','例如','比如','随着','同时','此外','然后','之后','之前','今天','现在','目前'].includes(big)) {
                 freq[big] = (freq[big] || 0) + 1;
             }
         }
-        for (let i = 0; i < cjkStr.length; i++) {
-            const c = cjkStr[i];
-            if (STOP.indexOf(c) < 0) freq[c] = (freq[c] || 0) + 0.6;
+        for (let idx = 0; idx < cjkStr.length; idx++) {
+            const char = cjkStr[idx];
+            if (STOP.indexOf(char) < 0) freq[char] = (freq[char] || 0) + 0.6;
         }
-        const words = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).filter(k => k.length > 1 || !/[\d]/.test(k));
+        const words = Object.keys(freq).sort((lhs, rhs) => freq[rhs] - freq[lhs]).filter(k => k.length > 1 || !/[\d]/.test(k));
         // 信息密度：非停用字占比
-        const meaningful = cjkStr.split('').filter(c => STOP.indexOf(c) < 0).length;
+        const meaningful = cjkStr.split('').filter(char => STOP.indexOf(char) < 0).length;
         const density = cjk > 0 ? Math.round(meaningful / cjk * 100) : 0;
         // 情感
         let pos = 0, neg = 0;
-        POS_WORDS.forEach(w => { pos += (text.match(new RegExp(w, 'g')) || []).length; });
-        NEG_WORDS.forEach(w => { neg += (text.match(new RegExp(w, 'g')) || []).length; });
+        POS_WORDS.forEach(word => { pos += (text.match(new RegExp(word, 'g')) || []).length; });
+        NEG_WORDS.forEach(word => { neg += (text.match(new RegExp(word, 'g')) || []).length; });
         let mood = '中性';
         if (pos > neg) mood = '偏积极 🙂';
         if (neg > pos) mood = '偏消极 😔';
@@ -131,49 +125,49 @@
         };
     }
 
-    function fmtMin(m) {
-        if (m < 0.5) return '不足 1 分钟';
-        if (m < 60) return Math.round(m) + ' 分钟';
-        return Math.floor(m / 60) + ' 小时 ' + Math.round(m % 60) + ' 分钟';
+    function fmtMin(minutes) {
+        if (minutes < 0.5) return '不足 1 分钟';
+        if (minutes < 60) return Math.round(minutes) + ' 分钟';
+        return Math.floor(minutes / 60) + ' 小时 ' + Math.round(minutes % 60) + ' 分钟';
     }
 
     /* ========== 词云（Canvas） ========== */
     function drawCloud(words, freq) {
         const cv = document.getElementById('cloud');
         const dpr = window.devicePixelRatio || 1;
-        const w = cv.clientWidth || 600, h = 260;
-        cv.width = w * dpr; cv.height = h * dpr;
-        cv.style.width = w + 'px'; cv.style.height = h + 'px';
+        const width = cv.clientWidth || 600, h = 260;
+        cv.width = width * dpr; cv.height = h * dpr;
+        cv.style.width = width + 'px'; cv.style.height = h + 'px';
         const ctx = cv.getContext('2d');
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, w, h);
+        ctx.clearRect(0, 0, width, h);
         // 从主题取强调色
         const cs = getComputedStyle(document.documentElement);
         const accent = cs.getPropertyValue('--zl-accent').trim() || '#6366f1';
         const accent2 = cs.getPropertyValue('--zl-accent-2').trim() || '#22d3ee';
         const items = words.slice(0, 12).map(k => ({ k, f: freq[k] }));
-        const max = Math.max.apply(null, items.map(i => i.f)) || 1;
+        const max = Math.max.apply(null, items.map(item => item.f)) || 1;
         const placed = [];
-        items.forEach((it, i) => {
-            let size = 14 + (it.f / max) * 26;
-            let x = Math.random() * w * 0.8 + w * 0.1, y = Math.random() * h * 0.8 + h * 0.1;
+        items.forEach((item, idx) => {
+            let size = 14 + (item.f / max) * 26;
+            let xPos = Math.random() * width * 0.8 + width * 0.1, y = Math.random() * h * 0.8 + h * 0.1;
             ctx.font = '900 ' + size + 'px "Microsoft YaHei","PingFang SC",sans-serif';
-            const tw = ctx.measureText(it.k).width;
+            const tw = ctx.measureText(item.k).width;
             // 简单碰撞：重试几次
-            for (let t = 0; t < 40; t++) {
+            for (let attempt = 0; attempt < 40; attempt++) {
                 let ok = true;
-                for (const p of placed) {
-                    if (Math.abs(p.x - x) < (p.w + tw) / 2 + 4 && Math.abs(p.y - y) < (p.h + size) / 2 + 4) { ok = false; break; }
+                for (const point of placed) {
+                    if (Math.abs(point.x - xPos) < (point.w + tw) / 2 + 4 && Math.abs(point.y - y) < (point.h + size) / 2 + 4) { ok = false; break; }
                 }
                 if (ok) break;
-                x = Math.random() * w * 0.8 + w * 0.1; y = Math.random() * h * 0.8 + h * 0.1;
+                xPos = Math.random() * width * 0.8 + width * 0.1; y = Math.random() * h * 0.8 + h * 0.1;
             }
-            placed.push({ x, y, w: tw, h: size });
-            const hue = (i * 37 + 230) % 360;
+            placed.push({ x: xPos, y, w: tw, h: size });
+            const hue = (idx * 37 + 230) % 360;
             ctx.fillStyle = 'hsl(' + hue + ', 70%, 60%)';
-            if (i % 3 === 0) ctx.fillStyle = accent;
-            if (i % 3 === 1) ctx.fillStyle = accent2;
-            ctx.fillText(it.k, x, y);
+            if (idx % 3 === 0) ctx.fillStyle = accent;
+            if (idx % 3 === 1) ctx.fillStyle = accent2;
+            ctx.fillText(item.k, xPos, y);
         });
     }
 
@@ -186,57 +180,57 @@
     function run() {
         const text = ta.value.trim();
         if (!text) { CY.showToast('请先粘贴文本'); return; }
-        const r = analyze(text);
-        lastRes = r;
-        document.getElementById('sChar').textContent = r.chars;
-        document.getElementById('sCjk').textContent = r.cjk;
-        document.getElementById('sWord').textContent = r.enWords;
-        document.getElementById('sLine').textContent = r.lines;
-        document.getElementById('sPara').textContent = r.paras;
-        document.getElementById('sRead').textContent = fmtMin(r.readMin);
-        document.getElementById('sSpeak').textContent = fmtMin(r.speakMin);
-        document.getElementById('sDensity').textContent = r.density + '%';
-        document.getElementById('kwBox').innerHTML = r.words.slice(0, 8).map(k =>
-            '<span class="kw"><b>' + Math.round(r.freq[k] * 10) / 10 + '</b>' + CY.escapeHtml(k) + '</span>'
+        const result = analyze(text);
+        lastRes = result;
+        document.getElementById('sChar').textContent = result.chars;
+        document.getElementById('sCjk').textContent = result.cjk;
+        document.getElementById('sWord').textContent = result.enWords;
+        document.getElementById('sLine').textContent = result.lines;
+        document.getElementById('sPara').textContent = result.paras;
+        document.getElementById('sRead').textContent = fmtMin(result.readMin);
+        document.getElementById('sSpeak').textContent = fmtMin(result.speakMin);
+        document.getElementById('sDensity').textContent = result.density + '%';
+        document.getElementById('kwBox').innerHTML = result.words.slice(0, 8).map(k =>
+            '<span class="kw"><b>' + Math.round(result.freq[k] * 10) / 10 + '</b>' + CY.escapeHtml(k) + '</span>'
         ).join('');
         document.getElementById('senseBox').innerHTML =
-            '情感倾向：<b style="color:var(--zl-accent);">' + r.mood + '</b>（积极词 ' + r.pos + ' · 消极词 ' + r.neg + '）<br>' +
-            '平均句长：约 ' + r.avgLen + ' 字/句 → 阅读难度：' + r.level + '<br>' +
-            '信息密度：' + r.density + '%（去掉「的、了、是」等虚字后实词占比，越高越干货）';
+            '情感倾向：<b style="color:var(--zl-accent);">' + result.mood + '</b>（积极词 ' + result.pos + ' · 消极词 ' + result.neg + '）<br>' +
+            '平均句长：约 ' + result.avgLen + ' 字/句 → 阅读难度：' + result.level + '<br>' +
+            '信息密度：' + result.density + '%（去掉「的、了、是」等虚字后实词占比，越高越干货）';
         document.getElementById('resCard').style.display = '';
-        drawCloud(r.words, r.freq);
+        drawCloud(result.words, result.freq);
         if (window.CY && CY.activity) CY.activity.add({ type: 'text_check', page: '4.html' });
         CY.showToast('体检完成');
     }
 
     function buildReport() {
         if (!lastRes) return;
-        const r = lastRes;
+        const result = lastRes;
         return ['【文本体检报告】',
             '生成时间：' + new Date().toLocaleString(),
             '',
             '—— 规模 ——',
-            '总字符：' + r.chars,
-            '中文字数：' + r.cjk,
-            '英文单词：' + r.enWords,
-            '行数：' + r.lines,
-            '段落数：' + r.paras,
+            '总字符：' + result.chars,
+            '中文字数：' + result.cjk,
+            '英文单词：' + result.enWords,
+            '行数：' + result.lines,
+            '段落数：' + result.paras,
             '',
             '—— 时长 ——',
-            '预计阅读：' + fmtMin(r.readMin),
-            '预计朗读：' + fmtMin(r.speakMin),
+            '预计阅读：' + fmtMin(result.readMin),
+            '预计朗读：' + fmtMin(result.speakMin),
             '',
             '—— 高频词 ——',
-            r.words.slice(0, 8).map(k => k + '（' + Math.round(r.freq[k] * 10) / 10 + '）').join('、'),
+            result.words.slice(0, 8).map(k => k + '（' + Math.round(result.freq[k] * 10) / 10 + '）').join('、'),
             '',
             '—— 情感 ——',
-            '倾向：' + r.mood,
-            '积极词：' + r.pos + ' / 消极词：' + r.neg,
+            '倾向：' + result.mood,
+            '积极词：' + result.pos + ' / 消极词：' + result.neg,
             '',
             '—— 可读性 ——',
-            '平均句长：' + r.avgLen + ' 字/句',
-            '难度：' + r.level,
-            '信息密度：' + r.density + '%'
+            '平均句长：' + result.avgLen + ' 字/句',
+            '难度：' + result.level,
+            '信息密度：' + result.density + '%'
         ].join('\n');
     }
 

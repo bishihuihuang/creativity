@@ -32,13 +32,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -114,14 +108,14 @@
 
     function ensureScores() {
         state.scores = {};
-        for (var i = 0; i < state.opts.length; i++) state.scores[i] = {};
+        for (var optIdx = 0; optIdx < state.opts.length; optIdx++) state.scores[optIdx] = {};
     }
 
     /* ---------- 方案编辑 ---------- */
     function renderOpts() {
-        var g = document.getElementById('optGrid');
-        g.innerHTML = '';
-        state.opts.forEach(function (name, i) {
+        var grid = document.getElementById('optGrid');
+        grid.innerHTML = '';
+        state.opts.forEach(function (name, optIdx) {
             var card = document.createElement('div');
             card.className = 'opt-card';
             var hd = document.createElement('div');
@@ -131,20 +125,20 @@
             var inp = document.createElement('input');
             inp.className = 'cy-input';
             inp.value = name;
-            inp.placeholder = '方案 ' + (i + 1);
-            inp.onchange = function () { state.opts[i] = this.value.trim() || ('方案 ' + (i + 1)); renderMatrix(); };
+            inp.placeholder = '方案 ' + (optIdx + 1);
+            inp.onchange = function () { state.opts[optIdx] = this.value.trim() || ('方案 ' + (optIdx + 1)); renderMatrix(); };
             var del = document.createElement('button');
             del.className = 'cy-btn cy-btn-sm cy-btn-ghost';
             del.textContent = '🗑';
             del.onclick = function () {
-                state.opts.splice(i, 1);
+                state.opts.splice(optIdx, 1);
                 ensureScores();
                 renderOpts();
                 renderMatrix();
             };
             hd.appendChild(em); hd.appendChild(inp); hd.appendChild(del);
             card.appendChild(hd);
-            g.appendChild(card);
+            grid.appendChild(card);
         });
         renderMatrix();
     }
@@ -155,58 +149,63 @@
     }
 
     /* ---------- 标准编辑 ---------- */
+    function updateWeightPercents() {
+        var total = state.w.reduce(function (sum, addend) { return sum + addend; }, 0) || 1;
+        for (var weightIdx = 0; weightIdx < state.w.length; weightIdx++) {
+            var pct = document.getElementById('wPct' + weightIdx);
+            if (pct) pct.textContent = Math.round(state.w[weightIdx] / total * 100) + '%';
+        }
+    }
+    function crisRow(name, index) {
+        var row = document.createElement('div');
+        row.className = 'cri-row';
+        var nm = document.createElement('input');
+        nm.className = 'cy-input nm';
+        nm.value = name;
+        nm.placeholder = '标准 ' + (index + 1);
+        nm.onchange = function () { state.cris[index] = this.value.trim() || ('标准 ' + (index + 1)); renderMatrix(); };
+        var wLab = document.createElement('span');
+        wLab.style.cssText = 'font-size:12px;color:var(--zl-dim);white-space:nowrap;';
+        wLab.textContent = '权重';
+        var wInp = document.createElement('input');
+        wInp.className = 'cy-input';
+        wInp.type = 'number';
+        wInp.min = '0';
+        wInp.max = '10';
+        wInp.value = state.w[index];
+        wInp.style.width = '64px';
+        wInp.onchange = function () {
+            var weight = Math.min(10, Math.max(0, parseFloat(this.value) || 0));
+            state.w[index] = weight;
+            this.value = weight;
+            renderMatrix();
+        };
+        var wPct = document.createElement('span');
+        wPct.id = 'wPct' + index;
+        wPct.style.cssText = 'font-size:12px;color:var(--zl-accent);min-width:44px;text-align:right;';
+        var del = document.createElement('button');
+        del.className = 'cy-btn cy-btn-sm cy-btn-ghost';
+        del.textContent = '🗑';
+        del.onclick = function () {
+            state.cris.splice(index, 1);
+            state.w.splice(index, 1);
+            ensureScores();
+            renderCris();
+            renderMatrix();
+        };
+        row.appendChild(nm);
+        row.appendChild(wLab); row.appendChild(wInp);
+        row.appendChild(wPct);
+        row.appendChild(del);
+        return row;
+    }
     function renderCris() {
         var box = document.getElementById('criBox');
         box.innerHTML = '';
-        state.cris.forEach(function (name, i) {
-            var row = document.createElement('div');
-            row.className = 'cri-row';
-            var nm = document.createElement('input');
-            nm.className = 'cy-input nm';
-            nm.value = name;
-            nm.placeholder = '标准 ' + (i + 1);
-            nm.onchange = function () { state.cris[i] = this.value.trim() || ('标准 ' + (i + 1)); renderMatrix(); };
-            var wLab = document.createElement('span');
-            wLab.style.cssText = 'font-size:12px;color:var(--zl-dim);white-space:nowrap;';
-            wLab.textContent = '权重';
-            var wInp = document.createElement('input');
-            wInp.className = 'cy-input';
-            wInp.type = 'number';
-            wInp.min = '0';
-            wInp.max = '10';
-            wInp.value = state.w[i];
-            wInp.style.width = '64px';
-            wInp.onchange = function () {
-                var v = Math.min(10, Math.max(0, parseFloat(this.value) || 0));
-                state.w[i] = v;
-                this.value = v;
-                renderMatrix();
-            };
-            var wPct = document.createElement('span');
-            wPct.id = 'wPct' + i;
-            wPct.style.cssText = 'font-size:12px;color:var(--zl-accent);min-width:44px;text-align:right;';
-            var del = document.createElement('button');
-            del.className = 'cy-btn cy-btn-sm cy-btn-ghost';
-            del.textContent = '🗑';
-            del.onclick = function () {
-                state.cris.splice(i, 1);
-                state.w.splice(i, 1);
-                ensureScores();
-                renderCris();
-                renderMatrix();
-            };
-            row.appendChild(nm);
-            row.appendChild(wLab); row.appendChild(wInp);
-            row.appendChild(wPct);
-            row.appendChild(del);
-            box.appendChild(row);
+        state.cris.forEach(function (name, criIdx) {
+            box.appendChild(crisRow(name, criIdx));
         });
-        // 权重占比提示
-        var total = state.w.reduce(function (a, b) { return a + b; }, 0) || 1;
-        for (var i = 0; i < state.w.length; i++) {
-            var pct = document.getElementById('wPct' + i);
-            if (pct) pct.textContent = Math.round(state.w[i] / total * 100) + '%';
-        }
+        updateWeightPercents();
     }
     function addCri(name) {
         state.cris.push(name || ('标准 ' + (state.cris.length + 1)));
@@ -224,13 +223,13 @@
             return;
         }
         var html = '<table class="score-table"><thead><tr><th>方案 \\ 标准</th>';
-        state.cris.forEach(function (c) { html += '<th>' + escapeHtml(c) + '<br><span style="font-weight:400;font-size:11px;">w=' + state.w[state.cris.indexOf(c)] + '</span></th>'; });
+        state.cris.forEach(function (cri) { html += '<th>' + escapeHtml(cri) + '<br><span style="font-weight:400;font-size:11px;">w=' + state.w[state.cris.indexOf(cri)] + '</span></th>'; });
         html += '</tr></thead><tbody>';
-        state.opts.forEach(function (o, i) {
-            html += '<tr><td class="opt-name">' + escapeHtml(o) + '</td>';
-            state.cris.forEach(function (c, j) {
-                var v = state.scores[i] && state.scores[i][j] != null ? state.scores[i][j] : '';
-                html += '<td><input data-oi="' + i + '" data-ci="' + j + '" type="number" min="0" max="10" value="' + v + '" placeholder="–"></td>';
+        state.opts.forEach(function (opt, optIdx) {
+            html += '<tr><td class="opt-name">' + escapeHtml(opt) + '</td>';
+            state.cris.forEach(function (cri, criIdx) {
+                var value = state.scores[optIdx] && state.scores[optIdx][criIdx] != null ? state.scores[optIdx][criIdx] : '';
+                html += '<td><input data-oi="' + optIdx + '" data-ci="' + criIdx + '" type="number" min="0" max="10" value="' + value + '" placeholder="–"></td>';
             });
             html += '</tr>';
         });
@@ -238,40 +237,40 @@
         wrap.innerHTML = html;
         wrap.querySelectorAll('input').forEach(function (inp) {
             inp.addEventListener('change', function () {
-                var v = Math.min(10, Math.max(0, parseFloat(this.value) || 0));
-                this.value = v || '';
+                var value = Math.min(10, Math.max(0, parseFloat(this.value) || 0));
+                this.value = value || '';
                 if (!state.scores[+this.dataset.oi]) state.scores[+this.dataset.oi] = {};
-                state.scores[+this.dataset.oi][+this.dataset.ci] = v;
+                state.scores[+this.dataset.oi][+this.dataset.ci] = value;
             });
         });
     }
-    function escapeHtml(s) {
-        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+    function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"]/g, function (char) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]; });
     }
 
     /* ---------- 加权计算 ---------- */
     function calc() {
         var results = [];
-        var wTotal = state.w.reduce(function (a, b) { return a + b; }, 0) || 1;
-        state.opts.forEach(function (o, i) {
-            var sum = 0, filled = 0;
-            state.cris.forEach(function (c, j) {
-                var v = state.scores[i] && state.scores[i][j] ? state.scores[i][j] : 0;
-                sum += v * state.w[j];
-                if (state.scores[i] && state.scores[i][j] != null) filled++;
+        var wTotal = state.w.reduce(function (sum, addend) { return sum + addend; }, 0) || 1;
+        state.opts.forEach(function (opt, optIdx) {
+            var weighted = 0, filled = 0;
+            state.cris.forEach(function (cri, criIdx) {
+                var value = state.scores[optIdx] && state.scores[optIdx][criIdx] ? state.scores[optIdx][criIdx] : 0;
+                weighted += value * state.w[criIdx];
+                if (state.scores[optIdx] && state.scores[optIdx][criIdx] != null) filled++;
             });
-            results.push({ idx: i, name: o, score: sum, w: wTotal, filled: filled });
+            results.push({ idx: optIdx, name: opt, score: weighted, w: wTotal, filled: filled });
         });
-        results.sort(function (a, b) { return b.score - a.score; });
+        results.sort(function (lhs, rhs) { return rhs.score - lhs.score; });
         return { results: results, wTotal: wTotal };
     }
     function renderResult() {
-        var r = calc();
+        var calcOut = calc();
         var wrap = document.getElementById('resultWrap');
-        if (!r.results.length) { wrap.innerHTML = '<div class="sub" style="color:var(--zl-dim);">暂无数据</div>'; return; }
-        var maxScore = r.results.length ? r.results[0].score : 1;
+        if (!calcOut.results.length) { wrap.innerHTML = '<div class="sub" style="color:var(--zl-dim);">暂无数据</div>'; return; }
+        var maxScore = calcOut.results.length ? calcOut.results[0].score : 1;
         var html = '';
-        r.results.forEach(function (res, rank) {
+        calcOut.results.forEach(function (res, rank) {
             var badge = rank === 0 ? 'rank-1' : rank === 1 ? 'rank-2' : rank === 2 ? 'rank-3' : 'rank-n';
             var pct = maxScore ? Math.round(res.score / maxScore * 100) : 0;
             html += '<div style="padding:10px 0;border-bottom:1px solid var(--zl-border);">' +
@@ -282,8 +281,8 @@
                 '<div style="font-size:11px;color:var(--zl-dim);margin-top:4px;">已打分 ' + res.filled + '/' + state.cris.length + ' 项 · 加权总分（权重合计 ' + res.w + '）</div>' +
                 '</div>';
         });
-        if (r.results.length > 1) {
-            var gap = r.results[0].score - r.results[1].score;
+        if (calcOut.results.length > 1) {
+            var gap = calcOut.results[0].score - calcOut.results[1].score;
             html += '<div style="margin-top:12px;font-size:13px;color:var(--zl-text);">' +
                 '<b>解读：</b>第一名领先第二名 <b style="color:var(--zl-accent);">' + gap.toFixed(1) + ' 分</b>。' +
                 (gap < 2 ? '差距很小——建议调整权重或补充标准再验证一次，避免被「差不多」误导。' : '差距明显，可放心推进第一名方案。') +
@@ -298,23 +297,22 @@
         if (!base.results.length) { CY.showToast('请先添加方案与标准'); return; }
         var wrap = document.getElementById('sensWrap');
         var html = '<div style="font-size:14px;font-weight:700;color:var(--zl-text);margin-bottom:6px;">🔄 权重敏感性：放大某一标准，看排名是否会翻转</div>';
-        state.cris.forEach(function (c, j) {
+        state.cris.forEach(function (cri, criIdx) {
             // 复制 scores 并翻倍该标准权重
             var scores2 = {};
-            for (var i = 0; i < state.opts.length; i++) { scores2[i] = state.scores[i] || {}; }
+            for (var optIdx = 0; optIdx < state.opts.length; optIdx++) { scores2[optIdx] = state.scores[optIdx] || {}; }
             var w2 = state.w.slice();
-            w2[j] = Math.min(10, w2[j] * 2);
-            var wTotal2 = w2.reduce(function (a, b) { return a + b; }, 0) || 1;
-            var tmp = [];
-            state.opts.forEach(function (o, i) {
-                var sum = 0;
-                state.cris.forEach(function (c2, j2) { sum += (scores2[i][j2] || 0) * w2[j2]; });
-                tmp.push({ name: o, score: sum });
+            w2[criIdx] = Math.min(10, w2[criIdx] * 2);
+            var ranked = [];
+            state.opts.forEach(function (opt, rowIdx) {
+                var weighted = 0;
+                state.cris.forEach(function (cri2, criIdx2) { weighted += (scores2[rowIdx][criIdx2] || 0) * w2[criIdx2]; });
+                ranked.push({ name: opt, score: weighted });
             });
-            tmp.sort(function (a, b) { return b.score - a.score; });
-            var flipped = tmp[0].name !== base.results[0].name;
-            html += '<div class="sensitivity-bar"><span style="flex:1;min-width:0;">放大「' + escapeHtml(c) + '」×2</span>' +
-                '<span class="score">' + escapeHtml(tmp[0].name) + '</span>' +
+            ranked.sort(function (lhs, rhs) { return rhs.score - lhs.score; });
+            var flipped = ranked[0].name !== base.results[0].name;
+            html += '<div class="sensitivity-bar"><span style="flex:1;min-width:0;">放大「' + escapeHtml(cri) + '」×2</span>' +
+                '<span class="score">' + escapeHtml(ranked[0].name) + '</span>' +
                 '<span class="score" style="color:' + (flipped ? '#f43f5e' : '#16a34a') + ';font-size:12px;">' + (flipped ? '⚠ 排名翻转' : '✓ 稳居第一') + '</span></div>';
         });
         wrap.innerHTML = html;
@@ -322,20 +320,20 @@
 
     /* ---------- 导出 ---------- */
     function exportTable() {
-        var r = calc();
-        if (!r.results.length) { CY.showToast('请先添加方案与标准'); return; }
+        var calcOut = calc();
+        if (!calcOut.results.length) { CY.showToast('请先添加方案与标准'); return; }
         var lines = ['# 决策矩阵分析表', '', '## 方案', ''];
-        state.opts.forEach(function (o, i) { lines.push((i + 1) + '. ' + o); });
+        state.opts.forEach(function (opt, optIdx) { lines.push((optIdx + 1) + '. ' + opt); });
         lines.push('', '## 标准与权重', '');
-        state.cris.forEach(function (c, j) { lines.push('- ' + c + '（权重 ' + state.w[j] + '）'); });
+        state.cris.forEach(function (cri, criIdx) { lines.push('- ' + cri + '（权重 ' + state.w[criIdx] + '）'); });
         lines.push('', '## 打分矩阵', '');
         lines.push('| 方案 | ' + state.cris.map(escapeHtml).join(' | ') + ' |');
         lines.push('| --- | ' + state.cris.map(function () { return '---'; }).join(' | ') + ' |');
-        state.opts.forEach(function (o, i) {
-            lines.push('| ' + escapeHtml(o) + ' | ' + state.cris.map(function (c, j) { return state.scores[i][j] != null ? state.scores[i][j] : '–'; }).join(' | ') + ' |');
+        state.opts.forEach(function (opt, optIdx) {
+            lines.push('| ' + escapeHtml(opt) + ' | ' + state.cris.map(function (cri, criIdx) { return state.scores[optIdx][criIdx] != null ? state.scores[optIdx][criIdx] : '–'; }).join(' | ') + ' |');
         });
         lines.push('', '## 加权得分排名', '');
-        r.results.forEach(function (res, k) { lines.push((k + 1) + '. ' + res.name + '：' + res.score.toFixed(1) + ' 分'); });
+        calcOut.results.forEach(function (res, rank) { lines.push((rank + 1) + '. ' + res.name + '：' + res.score.toFixed(1) + ' 分'); });
         var text = lines.join('\n');
         try {
             navigator.clipboard.writeText(text).then(function () { CY.showToast('📄 决策表已复制'); }).catch(function () { CY.download('decision-matrix.md', text, 'text/markdown'); });
@@ -380,11 +378,16 @@
     document.getElementById('btnSens').onclick = renderSensitivity;
     document.getElementById('btnExport').onclick = exportTable;
 
-    addOpt('方案 A');
-    addOpt('方案 B');
-    addCri('标准 1');
-    addCri('标准 2');
-    if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '7.html' });
+    /* 公共脚本 common.js / theme.js / cy-features.js 都是 defer 加载，而本段内联脚本不带 defer，
+       会抢先执行——那时 CY 还没定义，最后一行 typeof CY.activity 抛 ReferenceError，open_tool 活动记录静默丢失。
+       把初始化挪到 DOMContentLoaded：defer 脚本在此事件之前一定已执行完。 */
+    document.addEventListener('DOMContentLoaded', function () {
+        addOpt('方案 A');
+        addOpt('方案 B');
+        addCri('标准 1');
+        addCri('标准 2');
+        if (typeof CY.activity === 'object' && CY.activity.add) CY.activity.add({ type: 'open_tool', page: '7.html' });
+    });
     </script>
 </body>
 </html>

@@ -25,13 +25,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -84,44 +78,101 @@
     function renderChecks() {
         var box = document.getElementById('checkBox');
         box.innerHTML = '';
-        results.forEach(function (r) {
-            var d = document.createElement('div');
-            d.className = 'check-item';
-            d.innerHTML = '<span class="ic">' + (r.ok ? '✅' : '❌') + '</span><span class="nm">' + r.name + '</span>' +
-                '<span class="st ' + (r.ok ? 'st-ok' : 'st-fail') + '">' + (r.ok ? '通过' : '异常') + '</span>';
-            if (r.detail) {
+        results.forEach(function (result) {
+            var itemDiv = document.createElement('div');
+            itemDiv.className = 'check-item';
+            itemDiv.innerHTML = '<span class="ic">' + (result.ok ? '✅' : '❌') + '</span><span class="nm">' + result.name + '</span>' +
+                '<span class="st ' + (result.ok ? 'st-ok' : 'st-fail') + '">' + (result.ok ? '通过' : '异常') + '</span>';
+            if (result.detail) {
                 var det = document.createElement('div');
                 det.style.cssText = 'width:100%;font-size:12px;color:var(--zl-dim);padding:2px 0 0 28px;line-height:1.6;';
-                det.textContent = r.detail;
-                d.appendChild(det);
+                det.textContent = result.detail;
+                itemDiv.appendChild(det);
             }
-            box.appendChild(d);
+            box.appendChild(itemDiv);
         });
     }
     function renderPages() {
         var grid = document.getElementById('pageGrid');
         grid.innerHTML = '';
-        pageResults.forEach(function (p) {
-            var d = document.createElement('div');
-            d.className = 'page-cell ' + (p.ok ? 'ok' : 'fail');
-            d.innerHTML = '<div class="pf">' + (p.ok ? '✓' : '✗') + ' ' + p.f + '</div><div class="pt">' + (p.title || '') + '</div>';
-            grid.appendChild(d);
+        pageResults.forEach(function (pageItem) {
+            var itemDiv = document.createElement('div');
+            itemDiv.className = 'page-cell ' + (pageItem.ok ? 'ok' : 'fail');
+            itemDiv.innerHTML = '<div class="pf">' + (pageItem.ok ? '✓' : '✗') + ' ' + pageItem.f + '</div><div class="pt">' + (pageItem.title || '') + '</div>';
+            grid.appendChild(itemDiv);
         });
     }
 
     /* 检测页面可达性：fetch 页面文本并检查 <title> 与关键词 */
-    function checkPage(f, title, kw) {
-        return fetch(f, { cache: 'no-cache' }).then(function (res) {
-            if (!res.ok) { pageResults.push({ f: f, ok: false, title: 'HTTP ' + res.status }); return false; }
+    function checkPage(filePath, title, kw) {
+        return fetch(filePath, { cache: 'no-cache' }).then(function (res) {
+            if (!res.ok) { pageResults.push({ f: filePath, ok: false, title: 'HTTP ' + res.status }); return false; }
             return res.text().then(function (text) {
-                var t = (text.match(/<title>([^<]*)<\/title>/) || [])[1] || '';
-                var ok = t.indexOf(title) >= 0;
-                pageResults.push({ f: f, ok: ok, title: ok ? t : '标题不匹配' });
+                var pageTitle = (text.match(/<title>([^<]*)<\/title>/) || [])[1] || '';
+                var ok = pageTitle.indexOf(title) >= 0;
+                pageResults.push({ f: filePath, ok: ok, title: ok ? pageTitle : '标题不匹配' });
                 return ok;
             });
         }).catch(function () {
-            pageResults.push({ f: f, ok: false, title: '网络错误' });
+            pageResults.push({ f: filePath, ok: false, title: '网络错误' });
             return false;
+        });
+    }
+
+    /* 专项检查拆开，run() 只负责重置与编排 */
+    function checkLocalStorage() {
+        try {
+            var key = 'cy_verify_probe';
+            localStorage.setItem(key, '1');
+            localStorage.removeItem(key);
+            add('本地存储 localStorage', true, '读写正常');
+        } catch (err) {
+            add('本地存储 localStorage', false, String(err));
+        }
+    }
+    function checkThemeVariables() {
+        try {
+            var cssText = document.querySelector('link[href="common.css"]') ? 'common.css' : '检查不到';
+            var themes = ['dark', 'blue', 'gold', 'light', 'milk', 'guofeng', 'snowsun', 'cyber', 'aurora', 'custom'];
+            var missing = [];
+            themes.forEach(function (theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                var bgValue = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+                if (!bgValue) missing.push(theme);
+            });
+            document.documentElement.setAttribute('data-theme', localStorage.getItem('cy_theme') || 'dark');
+            add('主题变量', missing.length === 0, missing.length ? '缺失主题：' + missing.join('、') : '10 个主题的 --bg 均可读取（via ' + cssText + '）');
+        } catch (err) {
+            add('主题变量', false, String(err));
+        }
+    }
+    function checkServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(function (reg) {
+                add('Service Worker 注册', !!reg, reg ? '已注册（' + (reg.active ? 'active' : 'pending/installing') + '）' : '未注册——部署到 HTTPS 或 localhost 后自动注册');
+            }).catch(function (err) {
+                add('Service Worker 注册', false, String(err));
+            });
+        } else {
+            add('Service Worker 注册', false, '当前浏览器不支持');
+        }
+    }
+    function checkGlobals() {
+        var cyOk = typeof window.CY === 'object' && Array.isArray(window.CY.PAGES);
+        add('全局库 CY.PAGES 数据源', cyOk, cyOk ? '包含 ' + window.CY.PAGES.length + ' 个页面' : 'cy-features.js 未加载');
+        var achOk = typeof window.CY === 'object' && Array.isArray(window.CY.ACHIEVEMENTS);
+        add('成就系统 CY.ACHIEVEMENTS', achOk, achOk ? '包含 ' + window.CY.ACHIEVEMENTS.length + ' 个成就' : '未加载');
+    }
+    function checkPageReach() {
+        var pages = (typeof window.CY === 'object' && window.CY.PAGES) ? window.CY.PAGES : [];
+        var all = [];
+        pages.forEach(function (p) {
+            all.push(checkPage(p.f, p.t.split('·')[1] ? p.t.split('·')[1] : p.t, p.k));
+        });
+        Promise.all(all).then(function (oks) {
+            var failCount = oks.filter(function (isOk) { return !isOk; }).length;
+            add('页面可达性 ' + pages.length + ' 个页面', failCount === 0, failCount ? failCount + ' 个页面异常，见下方网格' : '全部页面可访问且标题匹配');
+            renderPages();
         });
     }
 
@@ -130,70 +181,20 @@
         pageResults = [];
         renderChecks();
         renderPages();
-
-        /* 1. localStorage */
-        try {
-            var k = 'cy_verify_probe';
-            localStorage.setItem(k, '1');
-            localStorage.removeItem(k);
-            add('本地存储 localStorage', true, '读写正常');
-        } catch (e) {
-            add('本地存储 localStorage', false, String(e));
-        }
-
-        /* 2. 主题变量（10 主题的 --bg 变量是否存在） */
-        try {
-            var cssText = document.querySelector('link[href="common.css"]') ? 'common.css' : '检查不到';
-            var themes = ['dark', 'blue', 'gold', 'light', 'milk', 'guofeng', 'snowsun', 'cyber', 'aurora', 'custom'];
-            var missing = [];
-            themes.forEach(function (t) {
-                document.documentElement.setAttribute('data-theme', t);
-                var v = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-                if (!v) missing.push(t);
-            });
-            document.documentElement.setAttribute('data-theme', localStorage.getItem('cy_theme') || 'dark');
-            add('主题变量', missing.length === 0, missing.length ? '缺失主题：' + missing.join('、') : '10 个主题的 --bg 均可读取（via ' + cssText + '）');
-        } catch (e) {
-            add('主题变量', false, String(e));
-        }
-
-        /* 3. Service Worker */
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistration().then(function (reg) {
-                add('Service Worker 注册', !!reg, reg ? '已注册（' + (reg.active ? 'active' : 'pending/installing') + '）' : '未注册——部署到 HTTPS 或 localhost 后自动注册');
-            }).catch(function (e) {
-                add('Service Worker 注册', false, String(e));
-            });
-        } else {
-            add('Service Worker 注册', false, '当前浏览器不支持');
-        }
-
-        /* 4. 全局库与页面数据源 */
-        var cyOk = typeof window.CY === 'object' && Array.isArray(window.CY.PAGES);
-        add('全局库 CY.PAGES 数据源', cyOk, cyOk ? '包含 ' + window.CY.PAGES.length + ' 个页面' : 'cy-features.js 未加载');
-        var achOk = typeof window.CY === 'object' && Array.isArray(window.CY.ACHIEVEMENTS);
-        add('成就系统 CY.ACHIEVEMENTS', achOk, achOk ? '包含 ' + window.CY.ACHIEVEMENTS.length + ' 个成就' : '未加载');
-
-        /* 5. 页面可达性（并发检查） */
-        var pages = (typeof window.CY === 'object' && window.CY.PAGES) ? window.CY.PAGES : [];
-        var all = [];
-        pages.forEach(function (p) {
-            all.push(checkPage(p.f, p.t.split('·')[1] ? p.t.split('·')[1] : p.t, p.k));
-        });
-        Promise.all(all).then(function (oks) {
-            var failCount = oks.filter(function (b) { return !b; }).length;
-            add('页面可达性 ' + pages.length + ' 个页面', failCount === 0, failCount ? failCount + ' 个页面异常，见下方网格' : '全部页面可访问且标题匹配');
-            renderPages();
-        });
+        checkLocalStorage();
+        checkThemeVariables();
+        checkServiceWorker();
+        checkGlobals();
+        checkPageReach();
     }
 
     /* 导出报告 */
     function exportReport() {
         var lines = ['# 创意引擎 · 全站自检报告', '', '时间：' + new Date().toLocaleString(), ''];
         lines.push('## 检测项', '');
-        results.forEach(function (r) { lines.push('- [' + (r.ok ? 'x' : ' ') + '] ' + r.name + (r.detail ? '（' + r.detail + '）' : '')); });
+        results.forEach(function (result) { lines.push('- [' + (result.ok ? 'x' : ' ') + '] ' + result.name + (result.detail ? '（' + result.detail + '）' : '')); });
         lines.push('', '## 页面可达性', '');
-        pageResults.forEach(function (p) { lines.push('- [' + (p.ok ? 'x' : ' ') + '] ' + p.f + ' —— ' + p.title); });
+        pageResults.forEach(function (pageItem) { lines.push('- [' + (pageItem.ok ? 'x' : ' ') + '] ' + pageItem.f + ' —— ' + pageItem.title); });
         var text = lines.join('\n');
         try {
             navigator.clipboard.writeText(text).then(function () { CY.showToast('📄 报告已复制'); }).catch(function () { CY.download('verify-report.md', text, 'text/markdown'); });

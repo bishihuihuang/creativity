@@ -278,13 +278,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
 
     <!-- PWA支持 -->
     <link rel="manifest" href="manifest.json">
@@ -420,8 +414,8 @@
             a.appendChild(titleSpan);
             a.appendChild(tooltipSpan);
 
-            a.addEventListener('click', function (e) {
-                e.preventDefault();
+            a.addEventListener('click', function (event) {
+                event.preventDefault();
                 const url = (config && config.link) ? config.link : '';
                 showLoadingOverlay(url);
             });
@@ -456,7 +450,7 @@
             try {
                 if (window.CY && CY.activity) { today = CY.activity.todayCount(); streak = CY.activity.streakDays(); }
                 ach = (CY.getUnlocked ? CY.getUnlocked() : []).length;
-            } catch (e) {}
+            } catch (err) {}
             box.innerHTML =
                 '<span class="stat-chip">🔥 今日灵感 ' + today + '</span>' +
                 '<span class="stat-chip">📅 连续活跃 ' + streak + ' 天</span>' +

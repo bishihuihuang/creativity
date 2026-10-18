@@ -12,13 +12,7 @@
     <meta name="description" content="你要找的页面不存在，5 秒后返回创意引擎首页。">
     <!-- 404 页不参与权重：不带 canonical（会误导搜索引擎），改由 noindex 排除 -->
     <meta name="robots" content="noindex,follow">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <style>
         html, body { height: 100%; margin: 0; }
         body {
@@ -91,11 +85,11 @@
 
     <script>
         (function () {
-            var n = 5, el = document.getElementById('cnt');
-            var t = setInterval(function () {
-                n--;
-                if (el) el.textContent = n;
-                if (n <= 0) { clearInterval(t); location.replace('index.html'); }
+            var countdown = 5, el = document.getElementById('cnt');
+            var intervalId = setInterval(function () {
+                countdown--;
+                if (el) el.textContent = countdown;
+                if (countdown <= 0) { clearInterval(intervalId); location.replace('index.html'); }
             }, 1000);
         })();
     </script>

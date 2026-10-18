@@ -21,13 +21,7 @@
     </style>
 
     <link rel="stylesheet" href="common.css">
-    <script>
-        try {
-            var _ct = localStorage.getItem('cy_theme');
-            var _ok = ['dark','blue','gold','light','milk','guofeng','snowsun','cyber','aurora','custom'];
-            if (_ct && _ok.indexOf(_ct) >= 0) { document.documentElement.setAttribute('data-theme', _ct); }
-        } catch (e) {}
-    </script>
+    <script src="theme-init.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -92,14 +86,14 @@
         const cjk = text.replace(/[^\u4e00-\u9fff]/g, '');
         const en = text.match(/[a-zA-Z]{2,}/g) || [];
         // 双字
-        for (let i = 0; i < cjk.length - 1; i++) {
-            const big = cjk[i] + cjk[i + 1];
+        for (let idx = 0; idx < cjk.length - 1; idx++) {
+            const big = cjk[idx] + cjk[idx + 1];
             if (STOP_WORDS.indexOf(big) < 0) toks.push({ tok: big, w: 1.6 });
         }
         // 单字（去停用字）
-        for (let i = 0; i < cjk.length; i++) {
-            const c = cjk[i];
-            if (STOP_CHARS.indexOf(c) < 0) toks.push({ tok: c, w: 1.0 });
+        for (let idx = 0; idx < cjk.length; idx++) {
+            const char = cjk[idx];
+            if (STOP_CHARS.indexOf(char) < 0) toks.push({ tok: char, w: 1.0 });
         }
         en.forEach(w => toks.push({ tok: w, w: 1.0 }));
         return toks;
@@ -107,37 +101,37 @@
 
     function splitSentences(text) {
         const parts = text.replace(/\n+/g, '。').split(/(?<=[。！？!?…])/);
-        return parts.map(s => s.trim()).filter(s => s.length >= 6);
+        return parts.map(sentence => sentence.trim()).filter(sentence => sentence.length >= 6);
     }
 
-    function summarize(text, n) {
+    function summarize(text, count) {
         const sents = splitSentences(text);
         if (sents.length === 0) return null;
         // 词频统计
         const freq = {};
-        tokenize(text).forEach(t => { freq[t.tok] = (freq[t.tok] || 0) + t.w; });
+        tokenize(text).forEach(token => { freq[token.tok] = (freq[token.tok] || 0) + token.w; });
         // 句子打分
-        const scored = sents.map((s, i) => {
+        const scored = sents.map((sentence, idx) => {
             let score = 0, cnt = 0;
-            tokenize(s).forEach(t => {
-                if (freq[t.tok]) { score += freq[t.tok] * t.w; cnt++; }
+            tokenize(sentence).forEach(token => {
+                if (freq[token.tok]) { score += freq[token.tok] * token.w; cnt++; }
             });
             // 位置加成：首句/末句略加权
-            const pos = i === 0 ? 1.15 : (i === sents.length - 1 ? 1.05 : 1);
-            const len = s.length;
+            const pos = idx === 0 ? 1.15 : (idx === sents.length - 1 ? 1.05 : 1);
+            const len = sentence.length;
             score = (score / Math.max(1, len)) * pos;
-            return { s, score, idx: i };
+            return { sentence, score, idx };
         });
-        // 取前 n 句（按分数），按原文顺序输出
-        const top = scored.slice().sort((a, b) => b.score - a.score).slice(0, n).sort((a, b) => a.idx - b.idx);
+        // 取前 count 句（按分数），按原文顺序输出
+        const top = scored.slice().sort((lhs, rhs) => rhs.score - lhs.score).slice(0, count).sort((lhs, rhs) => lhs.idx - rhs.idx);
         // 关键词：按词频取前 12，过滤单字与数字
-        const kws = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 12)
+        const kws = Object.keys(freq).sort((lhs, rhs) => freq[rhs] - freq[lhs]).slice(0, 12)
             .filter(k => !(/^[\d.]+$/.test(k)) && (k.length > 1 || STOP_CHARS.indexOf(k) < 0))
             .slice(0, 8);
         return {
-            summary: top.map(t => t.s).join(''),
-            sentences: top.map(t => t.s),
-            topIdx: top.map(t => t.idx),
+            summary: top.map(item => item.sentence).join(''),
+            sentences: top.map(item => item.sentence),
+            topIdx: top.map(item => item.idx),
             kws: kws.map(k => ({ w: k, f: Math.round(freq[k] * 10) / 10 })),
             meta: { totalSent: sents.length, totalChar: text.length, compress: Math.round(top.join('').length / text.length * 100) }
         };
@@ -154,8 +148,8 @@
     function run() {
         const text = ta.value.trim();
         if (text.length < 40) { CY.showToast('内容太短啦，至少 40 字效果才好'); return; }
-        const n = parseInt(nSent.value);
-        const res = summarize(text, n);
+        const sentenceCount = parseInt(nSent.value);
+        const res = summarize(text, sentenceCount);
         if (!res) { CY.showToast('没找到有效句子，请检查内容'); return; }
         document.getElementById('summBox').textContent = res.summary;
         document.getElementById('kwBox').innerHTML = res.kws.map(k =>
@@ -166,9 +160,9 @@
         // 原文高亮
         const sents = splitSentences(text);
         const topSet = {};
-        res.topIdx.forEach(i => topSet[i] = 1);
-        document.getElementById('origBox').innerHTML = sents.map((s, i) =>
-            '<span class="sent">' + (topSet[i] ? '<mark>' + CY.escapeHtml(s) + '</mark>' : CY.escapeHtml(s)) + '</span>'
+        res.topIdx.forEach(idx => topSet[idx] = 1);
+        document.getElementById('origBox').innerHTML = sents.map((sentence, idx) =>
+            '<span class="sent">' + (topSet[idx] ? '<mark>' + CY.escapeHtml(sentence) + '</mark>' : CY.escapeHtml(sentence)) + '</span>'
         ).join('');
         document.getElementById('resultCard').style.display = '';
         if (window.CY && CY.activity) CY.activity.add({ type: 'summarize', page: '3.html' });
@@ -183,16 +177,16 @@
         CY.showToast('示例已填入，点击「开始萃取」');
     };
     document.getElementById('btnCopy').onclick = function () {
-        const t = document.getElementById('summBox').textContent;
-        if (!t) return;
-        navigator.clipboard.writeText(t).then(function () { CY.showToast('摘要已复制'); }).catch(function () {});
+        const summaryText = document.getElementById('summBox').textContent;
+        if (!summaryText) return;
+        navigator.clipboard.writeText(summaryText).then(function () { CY.showToast('摘要已复制'); }).catch(function () {});
     };
     document.getElementById('btnSave').onclick = function () {
-        const t = document.getElementById('summBox').textContent;
-        if (!t) return;
+        const summaryText = document.getElementById('summBox').textContent;
+        if (!summaryText) return;
         try {
             const notes = JSON.parse(localStorage.getItem('cy_notes_v1') || '[]');
-            notes.unshift({ id: 'n' + Date.now(), text: '【摘要】' + t, tags: ['摘要'], fav: false, at: Date.now() });
+            notes.unshift({ id: 'n' + Date.now(), text: '【摘要】' + summaryText, tags: ['摘要'], fav: false, at: Date.now() });
             localStorage.setItem('cy_notes_v1', JSON.stringify(notes.slice(0, 300)));
             CY.showToast('已存入灵感记录本（9 号页可查看）');
         } catch (e) {}
